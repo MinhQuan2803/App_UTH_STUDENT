@@ -1,0 +1,37 @@
+<svg width="100%" height="100%" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg"
+    stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    
+    <!-- Body -->
+    <rect x="125" y="180" width="250" height="180" rx="30"/>
+
+    <!-- Head -->
+    <rect x="160" y="80" width="180" height="110" rx="25"/>
+    
+    <!-- Eyes -->
+    <circle cx="210" cy="135" r="12"/>
+    <circle cx="290" cy="135" r="12"/>
+    
+    <!-- Antenna -->
+    <line x1="250" y1="80" x2="250" y2="50"/>
+    <circle cx="250" cy="45" r="8"/>
+
+    <!-- Legs (dangling) -->
+    <rect x="160" y="360" width="50" height="90" rx="25"/>
+    <rect x="290" y="360" width="50" height="90" rx="25"/>
+    
+    <!-- Feet -->
+    <rect x="140" y="440" width="90" height="35" rx="17.5"/>
+    <rect x="270" y="440" width="90" height="35" rx="17.5"/>
+
+    <!-- Arms -->
+    <rect x="75" y="220" width="60" height="100" rx="30"/>
+    <rect x="365" y="220" width="60" height="100" rx="30"/>
+    
+    <!-- Hands -->
+    <circle cx="105" cy="320" r="30"/>
+    <circle cx="395" cy="320" r="30"/>
+    
+    <!-- Pen -->
+    <line x1="135" y1="310" x2="365" y2="310"/>
+</svg>
+
