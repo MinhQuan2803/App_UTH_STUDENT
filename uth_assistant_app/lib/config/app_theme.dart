@@ -9,6 +9,7 @@ class AppColors {
   static const Color accent = Color(0xFFFF4081); // Hồng san hô cho điểm nhấn
   static const Color background = Color(0xFFF5F7FA); // Xám rất nhạt, sạch sẽ
   static const Color white = Colors.white;
+   static const Color splashBackground = Color(0xFF038D8F);// Màu nền Splash Screen
 
   // Màu chữ
   static const Color text = Color(0xFF1A1A1A); // Đen đậm, nhưng không quá gắt
@@ -41,6 +42,7 @@ class AppColors {
   static const Color docxText = Color(0xFF1976D2);
   static const Color xlsxBackground = Color(0xFFE8F5E9);
   static const Color xlsxText = Color(0xFF388E3C);
+  
    
     // --- BỔ SUNG: DANH SÁCH MÀU NỀN CHO BÀI VIẾT ---
   static const List<Color> postBackgrounds = [
@@ -52,6 +54,7 @@ class AppColors {
     Color(0xFFF3F0FF), // Tím pastel
   ];
 
+  // Màu cho các gradient
  static const Color appBarGradientEnd = Color(0xFF764BA2);
   static const Color postButtonGradientStart = Color(0xFFFF6B9D);
   static const Color postButtonGradientEnd = Color(0xFFFFA06B);
@@ -67,6 +70,8 @@ class AppTextStyles {
   static const TextStyle headerGreeting = TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.white);
   static const TextStyle headerName = TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.white);
 
+  //tìm kiếm
+  static const TextStyle searchHint = TextStyle(fontFamily: 'Inter', fontSize: 15, color: AppColors.hintText);
   // Tiêu đề
   static const TextStyle heading1 = TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.text);
   static const TextStyle sectionTitle = TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.text);
@@ -107,6 +112,15 @@ class AppTextStyles {
   static const TextStyle notificationTitle = TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text);
   static const TextStyle notificationDate = TextStyle(fontFamily: 'Inter', fontSize: 10, color: AppColors.subtitle);
 
+  // Splash Screen
+  static const TextStyle splashTitle = TextStyle(
+    fontFamily: 'LazyDog', // Đã thay đổi
+    fontSize: 48,
+    fontWeight: FontWeight.bold,
+    color: AppColors.white,
+    shadows: [ Shadow(color: Colors.black26, offset: Offset(2, 2), blurRadius: 4) ]
+  );
+
  static const TextStyle appBarButton = TextStyle(fontFamily: 'Manrope', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600);
   static const TextStyle appBarTitleWhite = TextStyle(fontFamily: 'Manrope', color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700);
   static const TextStyle postButtonText = TextStyle(fontFamily: 'Manrope', fontSize: 15, fontWeight: FontWeight.w700);
@@ -119,7 +133,10 @@ class AppTextStyles {
 // Lớp quản lý đường dẫn tài sản (assets)
 class AppAssets {
   static const String _imagesPath = 'assets/images';
-  
+  static const String _imagesPicPath = 'assets/images_pic';
+    // --- BỔ SUNG URL VÀ ĐƯỜNG DẪN ẢNH ---
+  static const String newsApiUrl = 'http://192.168.2.4:3000/api/news'; 
+  static const String defaultNotificationImage = '$_imagesPicPath/uth_hoathinh.jpg'; // Đường dẫn ảnh mặc định
   static const String loginIllustration = '$_imagesPath/login_illustration.svg';
   static const String googleLogo = '$_imagesPath/google_logo.svg';
 
@@ -130,6 +147,7 @@ class AppAssets {
   static const String iconPlus = '$_imagesPath/icon_plus.svg';
   static const String iconChevronRight = '$_imagesPath/icon_chevron_right.svg';
   static const String iconImage = '$_imagesPath/icon_image.svg';
+  static const String iconSearch = '$_imagesPath/icon_search.svg';
 
   static const String iconChevronLeft = '$_imagesPath/icon_chevron_left.svg';
   static const String iconMic = '$_imagesPath/icon_mic.svg';
@@ -150,4 +168,7 @@ class AppAssets {
   static const String navBot = '$_imagesPath/nav_bot.svg';
   static const String navFolder = '$_imagesPath/nav_folder.svg';
   static const String navUser = '$_imagesPath/nav_user.svg';
+
+  // --- BỔ SUNG: Đường dẫn ảnh cho Splash Screen ---
+  static const String splashLogo = '$_imagesPath/splash_logo.png'; // Đặt tên file ảnh của bạn ở đây
 }

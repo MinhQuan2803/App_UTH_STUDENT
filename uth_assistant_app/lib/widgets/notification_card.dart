@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 
 class NotificationCard extends StatelessWidget {
-  final String imageUrl;
+  final String imageUrl; // Đây sẽ là đường dẫn asset (vd: 'assets/...')
   final String title;
   final String date;
 
@@ -16,7 +16,7 @@ class NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 250,
+      width: 260,
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16.0),
@@ -30,23 +30,27 @@ class NotificationCard extends StatelessWidget {
               topLeft: Radius.circular(16.0),
               topRight: Radius.circular(16.0),
             ),
-            // SỬA LỖI: Thêm errorBuilder để xử lý lỗi tải ảnh
-            child: Image.network(
-              imageUrl,
-              height: 90, // Giảm chiều cao
+            
+            // --- THAY ĐỔI QUAN TRỌNG TẠI ĐÂY ---
+            // Đổi từ Image.network thành Image.asset
+            child: Image.asset( 
+              imageUrl, // Bây giờ nó đọc từ thư mục assets
+              height: 100,
               width: double.infinity,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
+                // Xử lý nếu đường dẫn asset bị sai
                 return Container(
                   height: 90,
                   color: AppColors.divider,
-                  child: const Icon(Icons.image_not_supported, color: AppColors.hintText),
+                  child: const Icon(Icons.broken_image, color: AppColors.hintText),
                 );
               },
             ),
+            // ------------------------------------
           ),
           Padding(
-            padding: const EdgeInsets.all(6.00), // Giảm padding
+            padding: const EdgeInsets.all(6.00),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -56,7 +60,7 @@ class NotificationCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2), // Giảm khoảng cách
+                const SizedBox(height: 2),
                 Text(
                   date,
                   style: AppTextStyles.notificationDate,
@@ -69,4 +73,3 @@ class NotificationCard extends StatelessWidget {
     );
   }
 }
-

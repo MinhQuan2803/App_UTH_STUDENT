@@ -11,7 +11,7 @@ class PostCard extends StatelessWidget {
   final int likes;
   final int comments;
   final bool isLiked;
-  final Color? backgroundColor; // Màu nền tùy chỉnh (nullable)
+  final Color? backgroundColor;
 
   const PostCard({
     super.key,
@@ -23,169 +23,108 @@ class PostCard extends StatelessWidget {
     this.likes = 0,
     this.comments = 0,
     this.isLiked = false,
-    this.backgroundColor, // Người dùng có thể truyền màu vào
+    this.backgroundColor,
   });
 
-  // Danh sách màu nền pastel tươi sáng (dự phòng nếu không chọn màu)
-  static final List<Color> _backgroundColors = [
-    const Color(0xFFFFF0F5), // Hồng pastel
-    const Color(0xFFF0F4FF), // Xanh dương pastel
-    const Color(0xFFFFFAF0), // Cam nhạt
-    const Color(0xFFF0FFF4), // Xanh lá pastel
-    const Color(0xFFFFF5F7), // Hồng nhạt
-    const Color(0xFFF3F0FF), // Tím pastel
-  ];
-
   Color _getBackgroundColor() {
-    // Nếu người dùng đã chọn màu thì dùng màu đó
     if (backgroundColor != null) {
       return backgroundColor!;
     }
-    // Nếu không, random màu dựa trên hash của name
     final hash = name.hashCode.abs();
-    return _backgroundColors[hash % _backgroundColors.length];
+    return AppColors.postBackgrounds[hash % AppColors.postBackgrounds.length];
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _getBackgroundColor(),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: AppColors.shadow.withOpacity(0.5),
+            blurRadius: 8,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Header của bài viết
-          Row(
-            children: [
-              // Avatar với border gradient
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary.withOpacity(0.6),
-                      AppColors.accent.withOpacity(0.6),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                padding: const EdgeInsets.all(2.5),
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.white,
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundImage: NetworkImage(avatarUrl),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: AppTextStyles.postName),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Text(time, style: AppTextStyles.postMeta),
-                        const Text(
-                          ' • ',
-                          style: TextStyle(
-                            color: AppColors.subtitle,
-                            fontSize: 10,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            major,
-                            style: AppTextStyles.postMeta.copyWith(
-                              color: AppColors.primary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.white.withOpacity(0.6),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  onPressed: () {},
-                  icon: SvgPicture.asset(
-                    AppAssets.iconMore,
-                    width: 18,
-                    colorFilter: ColorFilter.mode(
-                      AppColors.subtitle,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Nội dung bài viết
-          Text(content, style: AppTextStyles.postContent),
-          const SizedBox(height: 14),
-          // Divider mỏng với màu accent nhẹ
-          Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary.withOpacity(0.3),
-                  AppColors.accent.withOpacity(0.3),
-                ],
-              ),
+          // Nội dung chính
+          Text(
+            content,
+            style: AppTextStyles.postContent.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 10), // Tăng khoảng cách chút
+
+          // Thông tin người đăng và nút More
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 12,
+                backgroundImage: NetworkImage(avatarUrl),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  name,
+                  style: AppTextStyles.postMeta.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.text.withOpacity(0.8),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              // Nút More (...) cho Báo cáo
+              SizedBox(
+                width: 24, // Giới hạn kích thước nút
+                height: 24,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  iconSize: 16,
+                  icon: SvgPicture.asset(
+                    AppAssets.iconMore,
+                    colorFilter: ColorFilter.mode(AppColors.subtitle.withOpacity(0.7), BlendMode.srcIn),
+                  ),
+                  onPressed: () {
+                    // TODO: Hiển thị menu với tùy chọn Báo cáo
+                    print('More options tapped');
+                  },
+                ),
+              )
+            ],
+          ),
+          const SizedBox(height: 8), // Khoảng cách trước nút tương tác
+
           // Nút tương tác
           Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               _InteractionButton(
                 iconAsset: AppAssets.iconHeart,
-                label: likes > 0 ? '$likes' : 'Thích',
+                label: likes > 0 ? '$likes' : '',
                 isActive: isLiked,
                 activeColor: AppColors.accent,
+                onTap: () {
+                  // TODO: Logic Thích
+                },
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 12),
               _InteractionButton(
                 iconAsset: AppAssets.iconComment,
-                label: comments > 0 ? '$comments' : 'Bình luận',
+                label: comments > 0 ? '$comments' : '',
                 activeColor: AppColors.primary,
+                 onTap: () {
+                  // TODO: Logic Bình luận
+                },
               ),
             ],
           ),
@@ -195,51 +134,66 @@ class PostCard extends StatelessWidget {
   }
 }
 
-// Widget riêng cho các nút tương tác (Thích, Bình luận)
+// Khôi phục lại Widget InteractionButton
 class _InteractionButton extends StatelessWidget {
   final String iconAsset;
   final String label;
   final bool isActive;
   final Color activeColor;
+  final VoidCallback? onTap; // Thêm callback onTap
 
   const _InteractionButton({
     required this.iconAsset,
     required this.label,
     this.isActive = false,
     this.activeColor = AppColors.primary,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? activeColor : AppColors.subtitle;
+    final color = isActive ? activeColor : AppColors.subtitle.withOpacity(0.8);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isActive
-            ? activeColor.withOpacity(0.12)
-            : AppColors.white.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SvgPicture.asset(
-            iconAsset,
-            width: 18,
-            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    // Bọc trong GestureDetector để có thể nhấn vào
+    return GestureDetector(
+      onTap: onTap,
+      // Dùng Material để có hiệu ứng ripple
+      child: Material(
+        color: Colors.transparent, // Nền trong suốt
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Giảm padding nhẹ
+          decoration: BoxDecoration(
+            // Chỉ hiển thị nền nhẹ khi active hoặc có label (số lượng)
+            color: (isActive || label.isNotEmpty)
+                ? color.withOpacity(0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: AppTextStyles.interaction.copyWith(
-              color: color,
-              fontSize: 13,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SvgPicture.asset(
+                iconAsset,
+                width: 16,
+                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+              ),
+              // Chỉ hiện label nếu có
+              if (label.isNotEmpty) ...[
+                 const SizedBox(width: 4), // Giảm khoảng cách
+                 Text(
+                  label,
+                  style: AppTextStyles.interaction.copyWith(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
+              ]
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
+

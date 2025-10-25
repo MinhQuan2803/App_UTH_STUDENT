@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 import '../widgets/profile_list_item.dart';
+import '../services/auth_service.dart'; // Import service
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  // Hàm xử lý đăng xuất
+  Future<void> _handleSignOut(BuildContext context) async {
+    final authService = AuthService();
+    await authService.signOut();
+    // Chuyển về màn hình đăng nhập và xóa hết stack cũ
+    if (context.mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +43,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildUserInfoCard(BuildContext context) {
+    // ... (Giữ nguyên nội dung)
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 60, 16, 24),
       decoration: BoxDecoration(
@@ -43,26 +55,17 @@ class ProfileScreen extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.topCenter,
         children: [
-          // Avatar được đặt bên ngoài Stack để có thể nổi lên trên
           Positioned(
-            top: -50, // Nâng avatar lên một nửa chiều cao của nó
+            top: -50,
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.white, width: 4),
-                boxShadow: const [
-                  BoxShadow(
-                    color: AppColors.shadow,
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
+                boxShadow: const [BoxShadow(color: AppColors.shadow, blurRadius: 10, spreadRadius: 2)],
               ),
               child: const CircleAvatar(
                 radius: 40,
-                backgroundImage: NetworkImage(
-                  'https://placehold.co/80x80/038D8F/FFFFFF?text=MP',
-                ),
+                backgroundImage: NetworkImage('https://tophinhanh.net/wp-content/uploads/2023/11/avatar-hoat-hinh-1.jpg'),
               ),
             ),
           ),
@@ -70,27 +73,18 @@ class ProfileScreen extends StatelessWidget {
             children: [
               const Text('Mai Phương', style: AppTextStyles.profileName),
               const SizedBox(height: 4),
-              const Text(
-                'MSV: 2251012345 | CNTT',
-                style: AppTextStyles.profileMeta,
-              ),
+              const Text('MSV: 2251012345 | CNTT', style: AppTextStyles.profileMeta),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 10,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-                child: const Text(
-                  'Chỉnh sửa hồ sơ',
-                  style: AppTextStyles.profileButton,
-                ),
+                child: const Text('Chỉnh sửa hồ sơ', style: AppTextStyles.profileButton),
               ),
             ],
           ),
@@ -98,10 +92,10 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-
+  
   Widget _buildActionList(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+       padding: const EdgeInsets.symmetric(vertical: 8.0),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16.0),
@@ -124,16 +118,16 @@ class ProfileScreen extends StatelessWidget {
             title: 'Cài đặt',
             onTap: () {},
           ),
+          // Cập nhật nút Đăng xuất
           ProfileListItem(
             iconPath: AppAssets.iconLogout,
             title: 'Đăng xuất',
             color: AppColors.danger,
-            onTap: () {
-              // TODO: Logic đăng xuất
-            },
+            onTap: () => _handleSignOut(context), // Gọi hàm đăng xuất
           ),
         ],
       ),
     );
   }
 }
+
