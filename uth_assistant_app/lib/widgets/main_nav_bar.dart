@@ -24,7 +24,7 @@ class MainNavBar extends StatelessWidget {
     final double indicatorOffset = (itemWidth * selectedIndex) + (itemWidth / 2) - (indicatorWidth / 2);
 
     return Container(
-      height: 70, // Chiều cao của toàn bộ thanh nav
+      height: 75, // Chiều cao của toàn bộ thanh nav
       decoration: const BoxDecoration(
         color: AppColors.white,
         boxShadow: [

@@ -17,9 +17,10 @@ class _MainScreenState extends State<MainScreen> {
   final PageController _pageController = PageController();
   int _selectedNavIndex = 0;
   int _fabKeyCounter = 0;
+  final GlobalKey<State<HomeScreen>> _homeScreenKey = GlobalKey();
 
   late final List<Widget> _screens = [
-    HomeScreen(pageController: _pageController),
+    HomeScreen(key: _homeScreenKey, pageController: _pageController),
     const ChatbotScreen(),
     const DocumentScreen(),
     const ProfileScreen(),
@@ -31,7 +32,16 @@ class _MainScreenState extends State<MainScreen> {
     // CẬP NHẬT: Xử lý sự kiện cho nút "Thêm"
     if (index == 2) {
       // Mở màn hình tạo bài viết dưới dạng một trang mới
-      Navigator.pushNamed(context, '/add_post');
+      Navigator.pushNamed(context, '/add_post').then((result) {
+        // Nếu đăng bài thành công, refresh home screen
+        if (result == true) {
+          // Gọi refresh method của HomeScreen thông qua GlobalKey
+          final homeScreenState = _homeScreenKey.currentState;
+          if (homeScreenState != null) {
+            (homeScreenState as dynamic).refreshPosts();
+          }
+        }
+      });
       return; // Không chuyển tab trong PageView
     }
 
@@ -51,7 +61,7 @@ class _MainScreenState extends State<MainScreen> {
     final newNavIndex = pageIndex >= 2 ? pageIndex + 1 : pageIndex;
     _handleNavChange(newNavIndex);
   }
-  
+
   void _handleNavChange(int newNavIndex) {
     final wasFabHidden = _selectedNavIndex == 1;
     final isFabHidden = newNavIndex == 1;
@@ -75,7 +85,8 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: PageView(
         controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(), // Tắt vuốt để chuyển trang
+        physics:
+            const NeverScrollableScrollPhysics(), // Tắt vuốt để chuyển trang
         onPageChanged: _onPageChanged,
         children: _screens,
       ),
@@ -95,4 +106,3 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
-

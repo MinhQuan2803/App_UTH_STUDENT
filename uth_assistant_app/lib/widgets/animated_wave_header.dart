@@ -4,10 +4,17 @@ import 'dart:math' as math;
 import '../config/app_theme.dart'; // Import AppTheme
 
 class AnimatedWaveHeader extends StatefulWidget {
-  // THÊM: Callback khi nhấn nút tìm kiếm
   final VoidCallback? onSearchPressed;
+  
+  // --- 1. THÊM BIẾN NÀY ĐỂ NHẬN USERNAME ---
+  final String username;
 
-  const AnimatedWaveHeader({super.key, this.onSearchPressed});
+  const AnimatedWaveHeader({
+    super.key, 
+    this.onSearchPressed,
+    required this.username, // <-- 2. THÊM VÀO CONSTRUCTOR
+  });
+
   @override
   State<AnimatedWaveHeader> createState() => _AnimatedWaveHeaderState();
 }
@@ -54,7 +61,7 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader> with SingleTick
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 8, 0), // Giảm padding phải
+              padding: const EdgeInsets.fromLTRB(14, 0, 8, 0),
               child: Row(
                 children: [
                   CircleAvatar(
@@ -62,34 +69,37 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader> with SingleTick
                     backgroundColor: AppColors.avatarBorder,
                     child: const CircleAvatar(
                       radius: 20,
+                      // TODO: Bạn cũng nên cập nhật avatar này động
                       backgroundImage: NetworkImage(
                           'https://daotao.ut.edu.vn/wp-content/uploads/2023/10/1_1677313062_324244885_660178202558079_4009191385075749836_n.jpg'),
                     ),
                   ),
                   const SizedBox(width: 15),
-                  const Column(
+                  Column( // <-- Bỏ 'const' ở đây
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Chào bạn,', style: AppTextStyles.headerGreeting),
-                      Text('Mai Phương', style: AppTextStyles.headerName),
+                      const Text('Chào bạn,', style: AppTextStyles.headerGreeting),
+                      // --- 3. SỬA DÒNG NÀY ---
+                      // Bỏ 'const' và dùng 'widget.username'
+                      Text(widget.username, style: AppTextStyles.headerName),
                     ],
                   ),
                   const Spacer(),
                   // Nút Tìm kiếm
                   IconButton(
-                    icon: SvgPicture.asset(AppAssets.iconSearch, // Sử dụng icon tìm kiếm
-                      width: 22, // Kích thước icon
-                      colorFilter: const ColorFilter.mode(
-                          AppColors.white, BlendMode.srcIn)),
-                    onPressed: widget.onSearchPressed, // Gọi callback
+                    icon: SvgPicture.asset(AppAssets.iconSearch,
+                        width: 22,
+                        colorFilter: const ColorFilter.mode(
+                            AppColors.white, BlendMode.srcIn)),
+                    onPressed: widget.onSearchPressed,
                   ),
                   // Nút Thông báo
                   IconButton(
                     icon: SvgPicture.asset(AppAssets.iconBell,
-                      width: 22, // Kích thước icon
-                      colorFilter: const ColorFilter.mode(
-                          AppColors.white, BlendMode.srcIn)),
+                        width: 22,
+                        colorFilter: const ColorFilter.mode(
+                            AppColors.white, BlendMode.srcIn)),
                     onPressed: () {},
                   ),
                 ],
@@ -102,12 +112,14 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader> with SingleTick
   }
 }
 
+// Lớp WavePainter (Giữ nguyên, không thay đổi)
 class WavePainter extends CustomPainter {
   final Animation<double> animation;
   WavePainter({required this.animation});
 
   @override
   void paint(Canvas canvas, Size size) {
+    // ... (Toàn bộ code của paint giữ nguyên) ...
     final paint1 = Paint()
       ..color = AppColors.headerWave1
       ..style = PaintingStyle.fill;
@@ -153,4 +165,3 @@ class WavePainter extends CustomPainter {
     return true;
   }
 }
-
