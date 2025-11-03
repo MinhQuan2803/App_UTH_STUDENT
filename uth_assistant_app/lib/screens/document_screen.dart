@@ -10,7 +10,8 @@ class DocumentScreen extends StatefulWidget {
   State<DocumentScreen> createState() => _DocumentScreenState();
 }
 
-class _DocumentScreenState extends State<DocumentScreen> with SingleTickerProviderStateMixin {
+class _DocumentScreenState extends State<DocumentScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -40,7 +41,8 @@ class _DocumentScreenState extends State<DocumentScreen> with SingleTickerProvid
                   children: [
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12.0),
-                      child: Text('Tài liệu học tập', style: AppTextStyles.appBarTitle),
+                      child: Text('Tài liệu học tập',
+                          style: AppTextStyles.appBarTitle),
                     ),
                     TabBar(
                       controller: _tabController,
@@ -64,8 +66,10 @@ class _DocumentScreenState extends State<DocumentScreen> with SingleTickerProvid
                 controller: _tabController,
                 children: [
                   _buildDocumentList(),
-                  const Center(child: Text('Tài liệu của bạn sẽ hiển thị ở đây')),
-                  const Center(child: Text('Các tài liệu đã thích sẽ hiển thị ở đây')),
+                  const Center(
+                      child: Text('Tài liệu của bạn sẽ hiển thị ở đây')),
+                  const Center(
+                      child: Text('Các tài liệu đã thích sẽ hiển thị ở đây')),
                 ],
               ),
             ),
@@ -77,12 +81,17 @@ class _DocumentScreenState extends State<DocumentScreen> with SingleTickerProvid
           left: 16,
           child: FloatingActionButton.extended(
             onPressed: () {
-              // TODO: Logic tải lên tài liệu
+              Navigator.pushNamed(context, '/upload_document');
             },
             backgroundColor: AppColors.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            icon: SvgPicture.asset(AppAssets.iconUpload, colorFilter: const ColorFilter.mode(AppColors.white, BlendMode.srcIn)),
-            label: const Text('Tải lên', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w600)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            icon: SvgPicture.asset(AppAssets.iconUpload,
+                colorFilter:
+                    const ColorFilter.mode(AppColors.white, BlendMode.srcIn)),
+            label: const Text('Tải lên',
+                style: TextStyle(
+                    color: AppColors.white, fontWeight: FontWeight.w600)),
           ),
         ),
       ],
@@ -91,7 +100,8 @@ class _DocumentScreenState extends State<DocumentScreen> with SingleTickerProvid
 
   Widget _buildDocumentList() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80), // Padding để FAB không che
+      padding:
+          const EdgeInsets.fromLTRB(16, 16, 16, 80), // Padding để FAB không che
       children: const [
         DocumentListItem(
           fileType: 'PDF',
@@ -114,4 +124,3 @@ class _DocumentScreenState extends State<DocumentScreen> with SingleTickerProvid
     );
   }
 }
-

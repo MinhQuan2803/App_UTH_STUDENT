@@ -8,17 +8,36 @@ import '../widgets/home_post_card.dart'; // SỬ DỤNG WIDGET MỚI
 import '../widgets/document_list_item.dart';
 // Import Service và Utility
 import '../services/news_service.dart';
-import '../services/post_service.dart'; // Import service
-import '../models/post_model.dart'; // Import model
-import '../services/auth_service.dart'; // Import auth
+import '../services/post_service.dart' hide Post; // SỬA LỖI: Thêm 'hide Post'
+import '../models/post_model.dart';
+import '../services/auth_service.dart';
 import '../utils/launcher_util.dart';
-import '../utils/time_formatter.dart'; // Import time formatter
+import '../utils/time_formatter.dart'; // Import hàm format
 
 // --- Dữ liệu mẫu (Giữ nguyên cho Tài liệu) ---
 // Bỏ _mockPosts vì sẽ tải từ API
 final List<Map<String, dynamic>> _mockDocuments = [
-  {'type': 'Tài liệu', 'title': 'Bài tập lớn Cấu trúc dữ liệu', 'uploader': 'Trần Anh', 'fileType': 'DOCX'},
-  {'type': 'Tài liệu', 'title': 'Tổng hợp công thức Excel', 'uploader': 'Mai Phương', 'fileType': 'XLSX'},
+  {
+    'type': 'Tài liệu',
+    'title': 'Bài tập lớn Cấu trúc dữ liệu',
+    'uploader': 'Trần Anh',
+    'fileType': 'DOCX',
+    'price': 50,
+  },
+  {
+    'type': 'Tài liệu',
+    'title': 'Tổng hợp công thức Excel',
+    'uploader': 'Mai Phương',
+    'fileType': 'XLSX',
+    'price': 0,
+  },
+   {
+    'type': 'Tài liệu',
+    'title': 'Đề cương Kinh tế Vận tải (có phí)',
+    'uploader': 'Lê Nguyễn',
+    'fileType': 'PDF',
+    'price': 100,
+  },
 ];
 // --- Kết thúc dữ liệu mẫu ---
 
@@ -95,10 +114,12 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
   Future<void> _fetchPostsData() async {
     setState(() => _isLoadingPosts = true);
     try {
-      final fetchedPosts = await _postService.getHomeFeed(page: 0, limit: 100, feed: 'public', forceRefresh: false); // Tải 100 posts
+      // Hàm getHomeFeed trả về List<dynamic>, cần ép kiểu
+      final List<dynamic> fetchedPostsDynamic = await _postService.getHomeFeed(page: 0, limit: 100, feed: 'public', forceRefresh: false); // Tải 100 posts
       if (!mounted) return;
       setState(() {
-        _allPosts = fetchedPosts;
+        // Ép kiểu List<dynamic> (chứa Maps) thành List<Post> (từ model)
+        _allPosts = fetchedPostsDynamic.map((json) => Post.fromJson(json)).toList();
         _isLoadingPosts = false;
         _filterResults();
       });
@@ -188,86 +209,99 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-    Widget _buildTab(String label, int count) {
-
-    final bool isSelected = _tabController.index ==
-
-        ['Thông báo', 'Bài viết', 'Tài liệu'].indexOf(label);
-
-    final Color textColor =
-
-        isSelected ? AppColors.white : AppColors.white.withOpacity(0.7);
-
-
+  Widget _buildTab(String label, int count) {
+    final bool isSelected = _tabController.index == ['Thông báo', 'Bài viết', 'Tài liệu'].indexOf(label);
+    final Color textColor = isSelected ? AppColors.white : AppColors.white.withOpacity(0.7);
 
     return Tab(
-
       child: Stack(
-
         clipBehavior: Clip.none, // Cho phép hiển thị số bên ngoài Stack
-
         children: [
-
           // Tiêu đề chính của tab
-
           Padding(
-
-            padding:
-
-                const EdgeInsets.only(right: 12), // Tạo khoảng trống cho số
-
+            padding: const EdgeInsets.only(right: 12), // Tạo khoảng trống cho số
             child: Text(
-
               label,
-
               overflow: TextOverflow.ellipsis,
-
             ),
-
           ),
-
           // Số lượng kết quả (superscript)
-
           if (count > 0) // Chỉ hiển thị nếu có kết quả
-
             Positioned(
-
               top: -4, // Nâng số lên trên
-
               right: 0, // Đặt số ở góc phải
-
               child: Text(
-
                 '$count',
-
                 style: TextStyle(
-
                   fontSize: 10, // Kích thước chữ nhỏ
-
                   color: textColor, // Màu giống tiêu đề
-
                   fontWeight: FontWeight.bold,
-
                 ),
-
               ),
-
             ),
-
         ],
-
       ),
-
     );
-
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        // ... (Code AppBar giữ nguyên)
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.white),
+        titleSpacing: 0, // Xóa khoảng cách mặc định của title
+        title: Row(
+          children: [
+            // Icon tìm kiếm đặt bên ngoài TextField
+             Padding(
+              padding: const EdgeInsets.only(left: 0, right: 8.0), // Giảm padding trái
+              child: SvgPicture.asset(
+                AppAssets.iconSearch,
+                colorFilter: ColorFilter.mode(AppColors.white.withOpacity(0.7), BlendMode.srcIn),
+                width: 20, // Kích thước icon
+              ),
+            ),
+            // TextField mở rộng để chiếm không gian còn lại
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Tìm kiếm...',
+                  hintStyle: AppTextStyles.searchHint.copyWith(color: AppColors.white.withOpacity(0.7)),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14), // Thêm padding dọc
+                  isCollapsed: true, // Thêm dòng này để loại bỏ padding mặc định
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: AppColors.white, size: 20),
+                          onPressed: () => _searchController.clear(),
+                        )
+                      : null,
+                ),
+                style: AppTextStyles.bodyBold.copyWith(color: AppColors.white),
+              ),
+            ),
+          ],
+        ),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: AppColors.white,
+          labelColor: AppColors.white,
+          unselectedLabelColor: AppColors.white.withOpacity(0.7),
+          labelStyle: AppTextStyles.tabLabel.copyWith(fontSize: 14),
+          indicatorWeight: 3.0,
+          onTap: (_) => setState(() {}),
+          tabs: [
+            _buildTab('Thông báo', _notificationCount),
+            _buildTab('Bài viết', _postCount),
+            _buildTab('Tài liệu', _documentCount),
+          ],
+        ),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -291,7 +325,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
       return Center(child: Text('Không tìm thấy $type nào.', style: AppTextStyles.bodyRegular));
     }
 
-    // CẬP NHẬT: Dùng SliverList.builder bên trong CustomScrollView
+    // CẬP NHẬT: Dùng CustomScrollView + SliverList
     return CustomScrollView(
       slivers: [
         SliverList.builder(
@@ -319,11 +353,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                 if (item is Post) { // Đã sửa
                   final avatarPlaceholder = 'https://placehold.co/80x80/${AppColors.secondary.value.toRadixString(16).substring(2)}/${AppColors.avatarPlaceholderText.value.toRadixString(16).substring(2)}?text=${item.author.username.isNotEmpty ? item.author.username[0].toUpperCase() : '?'}';
                   
-                  // SỬ DỤNG HomePostCard
+                  // SỬ DỤNG HomePostCard (kiểu Facebook)
                   return HomePostCard( 
                     key: ValueKey(item.id),
                     post: item,
-                    avatarPlaceholder: avatarPlaceholder,
+                    // avatarPlaceholder: avatarPlaceholder, // HomePostCard tự xử lý
                     username: _username,
                     onPostDeleted: () => _handlePostDeleted(item),
                     onPostUpdated: _handlePostUpdated,
@@ -339,6 +373,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                       fileType: item['fileType'] ?? 'N/A',
                       title: item['title'] ?? 'N/A',
                       uploader: item['uploader'] ?? 'N/A',
+                      price: item['price'] ?? 0,
                     ),
                   );
                 }

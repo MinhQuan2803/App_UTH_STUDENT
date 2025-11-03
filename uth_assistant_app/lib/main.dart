@@ -11,6 +11,9 @@ import 'screens/search_screen.dart';
 import 'screens/post_detail_screen.dart';
 import 'screens/profile_screen.dart'; // Import profile screen
 import 'models/post_model.dart';
+import 'screens/user_posts_screen.dart';
+import 'screens/wallet_screen.dart'; // 1. Import màn hình mới
+import 'screens/upload_ducument_screen.dart'; // Import màn hình upload document
 
 // Import service
 import 'services/auth_service.dart';
@@ -55,43 +58,46 @@ class MyApp extends StatelessWidget {
         '/add_post': (context) => const AddPostScreen(),
         '/signup': (context) => const SignupScreen(),
         '/search': (context) => const SearchScreen(),
+        '/wallet': (context) => const WalletScreen(),
+        '/upload_document': (context) => const UploadDocumentScreen(),
       },
 
- onGenerateRoute: (settings) {
-          if (settings.name == '/post_detail') {
-            // Lấy Post object từ arguments
-            final arguments = settings.arguments as Map<String, dynamic>?; // Nhận Map từ HomeScreen
-            // Bỏ 'backgroundColor' vì nó không còn cần thiết
-            if (arguments != null && arguments['post'] is Post) {
-              final post = arguments['post'] as Post;
-              return MaterialPageRoute(
-                builder: (context) {
-                  return PostDetailScreen(post: post);
-                },
-              );
-            }
-            print("Error: Invalid arguments passed to /post_detail");
-            return MaterialPageRoute(builder: (context) => const MainScreen()); // Quay về Home
+      onGenerateRoute: (settings) {
+        // Xử lý route cho Chi tiết Bài viết
+        if (settings.name == '/post_detail') {
+          final arguments = settings.arguments as Map<String, dynamic>?;
+          if (arguments != null && arguments['post'] is Post) {
+            final post = arguments['post'] as Post;
+            return MaterialPageRoute(
+              builder: (context) => PostDetailScreen(post: post),
+            );
           }
-          
-          // Xử lý route /profile với username
-          if (settings.name == '/profile') {
-            final arguments = settings.arguments as Map<String, dynamic>?;
-            if (arguments != null && arguments['username'] != null) {
-              final username = arguments['username'] as String;
-              return MaterialPageRoute(
-                builder: (context) {
-                  return ProfileScreen(username: username);
-                },
-              );
-            }
-            print("Error: Invalid arguments passed to /profile");
-            return MaterialPageRoute(builder: (context) => const MainScreen());
+        }
+
+        // Xử lý route cho Profile
+        if (settings.name == '/profile') {
+          final arguments = settings.arguments as Map<String, dynamic>?;
+          final username = arguments?['username'] as String?;
+          return MaterialPageRoute(
+            builder: (context) => ProfileScreen(username: username),
+          );
+        }
+
+        // Xử lý route cho Bài viết của Người dùng
+        if (settings.name == '/user_posts') {
+          final arguments = settings.arguments as Map<String, dynamic>?;
+          if (arguments != null && arguments['username'] is String) {
+            final username = arguments['username'] as String;
+            return MaterialPageRoute(
+              builder: (context) => UserPostsScreen(username: username),
+            );
           }
-          
-          // Xử lý các route khác
-          return null;
-        },
+        }
+
+        // Quay về trang chủ nếu có lỗi route
+        print("Error: Invalid arguments or route name");
+        return MaterialPageRoute(builder: (context) => const MainScreen());
+      },
     );
   }
 }

@@ -13,6 +13,9 @@ class AppColors {
   static const Color transparent = Colors.transparent;
   static const Color warning = Colors.orange; // BỔ SUNG
 
+
+  static const Color coinColor = Color(0xFFFFC107); // Vàng cho điểm UTH
+
   // Màu chữ
   static const Color text = Color(0xFF1A1A1A); // Đen đậm, nhưng không quá gắt
   static const Color subtitle =
@@ -189,6 +192,9 @@ class AppTextStyles {
   static const TextStyle errorText =
       TextStyle(fontFamily: 'Inter', color: AppColors.danger, fontSize: 14);
 
+// ví
+ static const TextStyle priceTag = TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary);
+  static const TextStyle walletBalance = TextStyle(fontFamily: 'Inter', fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary);
   // Tài liệu
   static const TextStyle documentTitle = TextStyle(
       fontFamily: 'Inter',
@@ -297,6 +303,11 @@ class AppAssets {
   static const String navFolder = '$_imagesPath/nav_folder.svg';
   static const String navUser = '$_imagesPath/nav_user.svg';
 
+   static const String iconWallet = '$_imagesPath/icon_wallet.svg';
+// ví
+   static const String iconCoin = '$_imagesPath/icon_coin.svg';
+   static const String iconmomo = '$_imagesPath/icon_momo.svg';
+   static const String iconZalo = '$_imagesPath/icon_zalopay.svg';
   // Biến cũ không còn dùng (đã được thay bằng navPlus)
   // static const String iconPlus = '$_imagesPath/icon_plus.svg';
 }

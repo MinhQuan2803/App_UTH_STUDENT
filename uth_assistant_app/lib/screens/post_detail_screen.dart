@@ -29,7 +29,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   final FocusNode _commentFocusNode = FocusNode();
 
   late Post _currentPost;
-  late String _avatarPlaceholder;
   String? _username;
   String? _currentUserAvatar; // Avatar thật từ API
 
@@ -47,8 +46,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _commentsFuture = _loadComments();
     _loadUsername();
     _loadUserProfile(); // Load avatar thật
-    _avatarPlaceholder =
-        'https://placehold.co/80x80/${AppColors.secondary.value.toRadixString(16).substring(2)}/${AppColors.avatarPlaceholderText.value.toRadixString(16).substring(2)}?text=${_currentPost.author.username.isNotEmpty ? _currentPost.author.username[0].toUpperCase() : '?'}';
   }
 
   Future<void> _loadUsername() async {
@@ -211,7 +208,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     HomePostCard(
                       key: ValueKey(_currentPost.id),
                       post: _currentPost,
-                      avatarPlaceholder: _avatarPlaceholder,
                       username: _username,
                       isDetailView: true,
                       onPostDeleted: () {

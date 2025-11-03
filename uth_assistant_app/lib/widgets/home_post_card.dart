@@ -10,7 +10,6 @@ import 'package:flutter/foundation.dart'; // Cho kDebugMode
 /// và tự quản lý các tương tác của nó (like, delete, update).
 class HomePostCard extends StatefulWidget {
   final Post post;
-  final String avatarPlaceholder;
   final String? username; // Username của người dùng đang đăng nhập
   final VoidCallback onPostDeleted; // Callback khi xóa thành công
   final VoidCallback onPostUpdated; // Callback khi sửa thành công
@@ -19,7 +18,6 @@ class HomePostCard extends StatefulWidget {
   const HomePostCard({
     super.key,
     required this.post,
-    required this.avatarPlaceholder,
     this.username,
     required this.onPostDeleted,
     required this.onPostUpdated,
@@ -220,6 +218,23 @@ class _HomePostCardState extends State<HomePostCard> {
 
   // --- CÁC WIDGET HELPER ---
 
+  // Tạo avatar URL từ post.author
+  String _getAvatarUrl() {
+    // Nếu có avatarUrl từ server, dùng nó
+    if (widget.post.author.avatarUrl != null &&
+        widget.post.author.avatarUrl!.isNotEmpty) {
+      return widget.post.author.avatarUrl!;
+    }
+
+    // Nếu không có, tạo placeholder đẹp với chữ cái đầu
+    final firstLetter = widget.post.author.username.isNotEmpty
+        ? widget.post.author.username[0].toUpperCase()
+        : '?';
+
+    // Tạo URL placeholder với màu từ theme
+    return 'https://ui-avatars.com/api/?name=$firstLetter&background=${AppColors.primary.value.toRadixString(16).substring(2)}&color=fff&size=80&bold=true';
+  }
+
   Widget _buildPostHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -239,8 +254,7 @@ class _HomePostCardState extends State<HomePostCard> {
               ),
               child: CircleAvatar(
                 radius: 20,
-                backgroundImage: NetworkImage(
-                    widget.post.author.avatarUrl ?? widget.avatarPlaceholder),
+                backgroundImage: NetworkImage(_getAvatarUrl()),
                 onBackgroundImageError: (_, __) {},
               ),
             ),
@@ -341,7 +355,7 @@ class _HomePostCardState extends State<HomePostCard> {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Image.network(
-                  widget.post.author.avatarUrl ?? widget.avatarPlaceholder,
+                  _getAvatarUrl(),
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(

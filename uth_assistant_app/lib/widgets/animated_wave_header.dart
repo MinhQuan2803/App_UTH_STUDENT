@@ -5,21 +5,24 @@ import '../config/app_theme.dart'; // Import AppTheme
 
 class AnimatedWaveHeader extends StatefulWidget {
   final VoidCallback? onSearchPressed;
-  
-  // --- 1. THÊM BIẾN NÀY ĐỂ NHẬN USERNAME ---
   final String username;
+  final String? avatarUrl; // Avatar từ server
+  final VoidCallback? onProfileTap; // Callback khi nhấn vào profile
 
   const AnimatedWaveHeader({
-    super.key, 
+    super.key,
     this.onSearchPressed,
-    required this.username, // <-- 2. THÊM VÀO CONSTRUCTOR
+    required this.username,
+    this.avatarUrl,
+    this.onProfileTap,
   });
 
   @override
   State<AnimatedWaveHeader> createState() => _AnimatedWaveHeaderState();
 }
 
-class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader> with SingleTickerProviderStateMixin {
+class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -39,6 +42,10 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader> with SingleTick
 
   @override
   Widget build(BuildContext context) {
+    // Tạo avatar URL: ưu tiên từ server, nếu null thì dùng placeholder
+    final String displayAvatarUrl = widget.avatarUrl ??
+        'https://ui-avatars.com/api/?name=${widget.username.isNotEmpty ? widget.username[0].toUpperCase() : '?'}&background=${AppColors.primary.value.toRadixString(16).substring(2)}&color=fff&size=80&bold=true';
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -64,28 +71,37 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader> with SingleTick
               padding: const EdgeInsets.fromLTRB(14, 0, 8, 0),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: AppColors.avatarBorder,
-                    child: const CircleAvatar(
-                      radius: 20,
-                      // TODO: Bạn cũng nên cập nhật avatar này động
-                      backgroundImage: NetworkImage(
-                          'https://daotao.ut.edu.vn/wp-content/uploads/2023/10/1_1677313062_324244885_660178202558079_4009191385075749836_n.jpg'),
+                  // Wrap avatar trong GestureDetector
+                  GestureDetector(
+                    onTap: widget.onProfileTap,
+                    child: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: AppColors.avatarBorder,
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundImage: NetworkImage(displayAvatarUrl),
+                        onBackgroundImageError: (_, __) {},
+                      ),
                     ),
                   ),
                   const SizedBox(width: 15),
-                  Column( // <-- Bỏ 'const' ở đây
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Chào bạn,', style: AppTextStyles.headerGreeting),
-                      // --- 3. SỬA DÒNG NÀY ---
-                      // Bỏ 'const' và dùng 'widget.username'
-                      Text(widget.username, style: AppTextStyles.headerName),
-                    ],
+                  // Wrap text trong GestureDetector
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: widget.onProfileTap,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Chào bạn,',
+                              style: AppTextStyles.headerGreeting),
+                          Text(widget.username,
+                              style: AppTextStyles.headerName,
+                              overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
                   ),
-                  const Spacer(),
                   // Nút Tìm kiếm
                   IconButton(
                     icon: SvgPicture.asset(AppAssets.iconSearch,
@@ -130,8 +146,8 @@ class WavePainter extends CustomPainter {
         i,
         size.height * 0.7 +
             math.sin((i / size.width * 2 * math.pi) +
-                (animation.value * 2 * math.pi)) *
-            10,
+                    (animation.value * 2 * math.pi)) *
+                10,
       );
     }
     path1.lineTo(size.width, size.height);
@@ -149,9 +165,9 @@ class WavePainter extends CustomPainter {
         i,
         size.height * 0.75 +
             math.sin((i / size.width * 2 * math.pi) -
-                (animation.value * 2 * math.pi) +
-                1) *
-            15,
+                    (animation.value * 2 * math.pi) +
+                    1) *
+                15,
       );
     }
     path2.lineTo(size.width, size.height);

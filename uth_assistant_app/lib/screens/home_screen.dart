@@ -6,6 +6,7 @@ import '../widgets/home_post_card.dart'; // Import widget mới
 import '../widgets/custom_button.dart'; // Import CustomButton
 import '../services/news_service.dart';
 import '../services/post_service.dart';
+import '../services/profile_service.dart';
 import '../models/post_model.dart';
 import '../utils/launcher_util.dart';
 import '../services/auth_service.dart';
@@ -32,7 +33,9 @@ class _HomeScreenState extends State<HomeScreen>
   final PostService _postService = PostService();
 
   final AuthService _authService = AuthService();
+  final ProfileService _profileService = ProfileService();
   String? _username;
+  String? _avatarUrl;
 
   @override
   bool get wantKeepAlive => true;
@@ -42,13 +45,24 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _fetchNewsData();
     _fetchPostsData();
-    _loadUsername();
+    _loadUserProfile();
   }
 
-  Future<void> _loadUsername() async {
-    final username = await _authService.getUsername();
-    if (mounted) {
-      setState(() => _username = username);
+  Future<void> _loadUserProfile() async {
+    try {
+      final profile = await _profileService.getMyProfile();
+      if (mounted) {
+        setState(() {
+          _username = profile['username'];
+          _avatarUrl = profile['avatarUrl'];
+        });
+      }
+    } catch (e) {
+      // Fallback to getUsername if profile fails
+      final username = await _authService.getUsername();
+      if (mounted) {
+        setState(() => _username = username);
+      }
     }
   }
 
@@ -134,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen>
         onRefresh: () async {
           await _fetchNewsData(forceRefresh: true);
           await _fetchPostsData(forceRefresh: true);
-          await _loadUsername();
+          await _loadUserProfile();
         },
         child: CustomScrollView(
           slivers: [
@@ -155,10 +169,16 @@ class _HomeScreenState extends State<HomeScreen>
       floating: false,
       pinned: true,
       elevation: 0,
+      automaticallyImplyLeading: false, // Loại bỏ nút back
       flexibleSpace: FlexibleSpaceBar(
         background: AnimatedWaveHeader(
           onSearchPressed: _navigateToSearch,
           username: _username ?? '...',
+          avatarUrl: _avatarUrl,
+          onProfileTap: () {
+            // Chuyển đến tab Profile (index 3)
+            widget.pageController.jumpToPage(3);
+          },
         ),
       ),
     );
@@ -298,20 +318,17 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
 
-    // CẬP NHẬT: Gọn gàng hơn, chỉ gọi HomePostCard
+    // Hiển thị danh sách bài viết
     return SliverPadding(
       padding: const EdgeInsets.only(bottom: 16.0),
       sliver: SliverList.builder(
         itemCount: _posts.length,
         itemBuilder: (context, index) {
           final post = _posts[index];
-          final avatarPlaceholder =
-              'https://placehold.co/80x80/${AppColors.secondary.value.toRadixString(16).substring(2)}/${AppColors.avatarPlaceholderText.value.toRadixString(16).substring(2)}?text=${post.author.username.isNotEmpty ? post.author.username[0].toUpperCase() : '?'}';
 
           return HomePostCard(
             key: ValueKey(post.id), // Dùng Key để Flutter nhận diện đúng
             post: post,
-            avatarPlaceholder: avatarPlaceholder,
             username: _username,
             onPostDeleted: () {
               setState(() {
