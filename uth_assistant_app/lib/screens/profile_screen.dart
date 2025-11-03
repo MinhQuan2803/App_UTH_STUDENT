@@ -3,6 +3,8 @@ import '../config/app_theme.dart';
 import '../widgets/profile_list_item.dart';
 import '../widgets/profile_stat_item.dart';
 import '../widgets/custom_button.dart';
+import '../widgets/custom_notification.dart';
+import '../widgets/modern_app_bar.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../services/follow_service.dart';
@@ -73,7 +75,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _user = user;
         _isLoading = false;
-        _appBarTitle = 'Hồ sơ của ${user['username'] ?? '...'}';
+        // Kiểm tra xem có phải profile của mình không
+        final bool isMyProfile =
+            widget.username == null || widget.username == _myUsername;
+        _appBarTitle = isMyProfile
+            ? 'Hồ sơ của bạn'
+            : 'Hồ sơ của ${user['username'] ?? '...'}';
       });
 
       // Tải số bài viết sau khi có username
@@ -169,11 +176,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Navigator.of(context, rootNavigator: true)
           .pushNamedAndRemoveUntil('/login', (route) => false);
       if (isTokenError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'),
-            backgroundColor: AppColors.danger,
-          ),
+        CustomNotification.error(
+          context,
+          'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.',
         );
       }
     }
@@ -183,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_user == null || _isFollowLoading) return;
     final userId = _user!['_id'] ?? _user!['id'];
     if (userId == null) {
-      _showErrorSnackBar('Không tìm thấy ID người dùng');
+      CustomNotification.error(context, 'Không tìm thấy ID người dùng');
       return;
     }
     final bool currentlyFollowing = _user!['isFollowing'] ?? false;
@@ -196,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _user!['isFollowing'] = false;
             _user!['followerCount'] = (_user!['followerCount'] ?? 1) - 1;
           });
-          _showSnackBar(result.message, AppColors.success);
+          CustomNotification.success(context, result.message);
         }
       } else {
         final result = await _followService.followUser(userId);
@@ -205,26 +210,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _user!['isFollowing'] = true;
             _user!['followerCount'] = (_user!['followerCount'] ?? 0) + 1;
           });
-          _showSnackBar(result.message, AppColors.success);
+          CustomNotification.success(context, result.message);
         }
       }
     } catch (e) {
-      if (mounted) _showErrorSnackBar(e.toString());
+      if (mounted) {
+        CustomNotification.error(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isFollowLoading = false);
     }
-  }
-
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: color,
-      duration: const Duration(seconds: 2),
-    ));
-  }
-
-  void _showErrorSnackBar(String message) {
-    _showSnackBar(message.replaceFirst('Exception: ', ''), AppColors.danger);
   }
 
   @override
@@ -239,27 +237,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 1. Nếu được push -> TẠO Scaffold
       return Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: AppColors.white,
-          elevation: 1,
-          shadowColor: AppColors.divider,
-          title: Text(_appBarTitle, style: AppTextStyles.appBarTitle),
-          centerTitle: true,
-          iconTheme: const IconThemeData(color: AppColors.text),
+        appBar: ModernAppBar(
+          title: _appBarTitle,
         ),
         body: body,
       );
     } else {
-      // 2. Nếu là 1 tab -> Dùng Column với AppBar
+      // 2. Nếu là 1 tab -> Dùng Column với AppBar hiện đại
       return Column(
         children: [
-          AppBar(
-            backgroundColor: AppColors.white,
-            elevation: 1,
-            shadowColor: AppColors.divider,
-            automaticallyImplyLeading: false, // Không có nút back
-            title: Text(_appBarTitle, style: AppTextStyles.appBarTitle),
-            centerTitle: true,
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primary,
+                  AppColors.primary.withOpacity(0.8),
+                ],
+              ),
+            ),
+            child: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              automaticallyImplyLeading: false, // Không có nút back
+              title: Text(
+                _appBarTitle,
+                style: AppTextStyles.appBarTitle.copyWith(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              centerTitle: true,
+              iconTheme: const IconThemeData(color: AppColors.white),
+            ),
           ),
           Expanded(child: body),
         ],
@@ -382,7 +393,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ? CustomButton(
                     text: 'Chỉnh sửa hồ sơ',
                     onPressed: () {
-                      _showErrorSnackBar('Tính năng đang phát triển');
+                      CustomNotification.info(
+                          context, 'Tính năng đang phát triển');
                     },
                     isPrimary: false,
                   )
@@ -432,12 +444,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ProfileListItem(
                 iconPath: AppAssets.iconFileCheck,
                 title: 'Tài liệu của tôi',
-                onTap: () => _showErrorSnackBar('Tính năng đang phát triển'),
+                onTap: () => CustomNotification.info(
+                    context, 'Tính năng đang phát triển'),
               ),
               ProfileListItem(
                 iconPath: AppAssets.iconSettings,
                 title: 'Cài đặt',
-                onTap: () => _showErrorSnackBar('Tính năng đang phát triển'),
+                onTap: () => CustomNotification.info(
+                    context, 'Tính năng đang phát triển'),
               ),
               ProfileListItem(
                 iconPath: AppAssets.iconLogout,
@@ -456,7 +470,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 iconData: Icons.flag_outlined,
                 title: 'Báo cáo người dùng',
                 color: AppColors.danger,
-                onTap: () => _showErrorSnackBar('Tính năng đang phát triển'),
+                onTap: () => CustomNotification.info(
+                    context, 'Tính năng đang phát triển'),
               ),
             ]
           ],

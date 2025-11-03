@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../widgets/custom_notification.dart';
+import '../widgets/modern_app_bar.dart';
+import '../config/app_theme.dart';
 
 /// Màn hình hiển thị comments của bài viết
 /// UI hoàn chỉnh với mock data, sẵn sàng kết nối API
@@ -147,9 +150,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
             onPressed: () {
               setState(() => _comments.removeAt(index));
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã xóa bình luận')),
-              );
+              CustomNotification.success(context, 'Đã xóa bình luận');
             },
             child: const Text('Xóa', style: TextStyle(color: Colors.red)),
           ),
@@ -178,11 +179,8 @@ class _CommentsScreenState extends State<CommentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bình luận'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
+      appBar: ModernAppBar(
+        title: 'Bình luận',
       ),
       body: Column(
         children: [

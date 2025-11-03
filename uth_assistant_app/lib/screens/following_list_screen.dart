@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/relationship_service.dart';
 import '../services/follow_service.dart';
+import '../widgets/custom_notification.dart';
+import '../widgets/modern_app_bar.dart';
 
 class FollowingListScreen extends StatefulWidget {
   final String username;
@@ -69,16 +71,13 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
       if (isCurrentlyFollowing) {
         await _followService.unfollowUser(user.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Đã bỏ theo dõi ${user.username}')),
-          );
+          CustomNotification.success(
+              context, 'Đã bỏ theo dõi ${user.username}');
         }
       } else {
         await _followService.followUser(user.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Đã theo dõi ${user.username}')),
-          );
+          CustomNotification.success(context, 'Đã theo dõi ${user.username}');
         }
       }
     } catch (e) {
@@ -88,12 +87,7 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomNotification.error(context, e.toString());
       }
     }
   }
@@ -109,8 +103,8 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Đang theo dõi ${widget.username}'),
+      appBar: ModernAppBar(
+        title: 'Đang theo dõi ${widget.username}',
       ),
       body: _buildBody(),
     );

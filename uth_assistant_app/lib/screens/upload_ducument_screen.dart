@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../config/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
+import '../widgets/modern_app_bar.dart';
 // import 'package:file_picker/file_picker.dart'; // Sẽ cần package này
 
 class UploadDocumentScreen extends StatefulWidget {
@@ -35,9 +36,10 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   */
 
   void _showErrorSnackBar(String message) {
-     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-       content: Text(message), backgroundColor: AppColors.danger,
-     ));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: AppColors.danger,
+    ));
   }
 
   void _submit() {
@@ -51,13 +53,14 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
       _showErrorSnackBar('Vui lòng chọn một file để tải lên');
       return;
     }
-     if (price == null) {
+    if (price == null) {
       _showErrorSnackBar('Vui lòng nhập giá bán hợp lệ (nhập 0 nếu miễn phí)');
       return;
     }
-    
+
     // TODO: Gọi API Upload Document
-    print('Đăng bán: $_fileName, Tiêu đề: ${_titleController.text}, Giá: $price');
+    print(
+        'Đăng bán: $_fileName, Tiêu đề: ${_titleController.text}, Giá: $price');
     Navigator.pop(context);
   }
 
@@ -65,12 +68,8 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Đăng bán Tài liệu', style: AppTextStyles.appBarTitle),
-        backgroundColor: AppColors.white,
-        iconTheme: const IconThemeData(color: AppColors.text),
-        elevation: 1,
-        shadowColor: AppColors.divider,
+      appBar: const ModernAppBar(
+        title: 'Đăng bán Tài liệu',
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -82,10 +81,11 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
               // onTap: _pickFile,
               onTap: () {
                 // Tạm thời giả lập đã chọn file
-                 setState(() => _fileName = 'de-cuong-giai-tich.pdf');
+                setState(() => _fileName = 'de-cuong-giai-tich.pdf');
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
                 decoration: BoxDecoration(
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -94,13 +94,16 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.cloud_upload_outlined, size: 48, color: AppColors.primary),
+                    const Icon(Icons.cloud_upload_outlined,
+                        size: 48, color: AppColors.primary),
                     const SizedBox(height: 12),
                     Text(
                       _fileName ?? 'Nhấn để chọn file (PDF, DOCX, PPTX...)',
-                      style: _fileName != null 
-                             ? AppTextStyles.bodyBold.copyWith(color: AppColors.primary)
-                             : AppTextStyles.bodyRegular.copyWith(color: AppColors.subtitle),
+                      style: _fileName != null
+                          ? AppTextStyles.bodyBold
+                              .copyWith(color: AppColors.primary)
+                          : AppTextStyles.bodyRegular
+                              .copyWith(color: AppColors.subtitle),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -124,7 +127,9 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
               controller: _priceController,
               hintText: 'Đặt giá (Điểm UTH) * (Nhập 0 nếu miễn phí)',
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly], // Chỉ cho nhập số
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly
+              ], // Chỉ cho nhập số
             ),
             const SizedBox(height: 32),
             CustomButton(

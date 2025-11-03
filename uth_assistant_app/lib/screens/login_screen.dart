@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../config/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
+import '../widgets/custom_notification.dart';
 import '../services/auth_service.dart';
 
 class AppAssets {
@@ -60,7 +61,10 @@ class _LoginScreenState extends State<LoginScreen>
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      _showErrorSnackBar("Vui lòng nhập đầy đủ email và mật khẩu.");
+      CustomNotification.error(
+        context,
+        "Vui lòng nhập đầy đủ email và mật khẩu.",
+      );
       return;
     }
 
@@ -89,20 +93,16 @@ class _LoginScreenState extends State<LoginScreen>
     final String message = responseData['message'] ?? 'Lỗi không xác định';
 
     if (success) {
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      CustomNotification.success(context, message);
+      // Đợi animation xong rồi mới chuyển trang
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        }
+      });
     } else {
-      _showErrorSnackBar(message);
+      CustomNotification.error(context, message);
     }
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.danger,
-      ),
-    );
   }
 
   @override

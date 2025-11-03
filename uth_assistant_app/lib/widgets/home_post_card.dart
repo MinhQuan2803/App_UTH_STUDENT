@@ -4,6 +4,7 @@ import '../models/post_model.dart';
 import '../services/post_service.dart';
 import '../utils/time_formatter.dart';
 import '../screens/add_post_screen.dart';
+import 'custom_notification.dart';
 import 'package:flutter/foundation.dart'; // Cho kDebugMode
 
 /// Widget này hiển thị một bài viết đầy đủ theo phong cách Facebook
@@ -33,6 +34,9 @@ class _HomePostCardState extends State<HomePostCard> {
   late int _likesCount;
   bool _isLiking = false;
   final PostService _postService = PostService();
+
+  // GlobalKey để lấy context stable ngay cả khi widget bị dispose
+  final GlobalKey _key = GlobalKey();
 
   @override
   void initState() {
@@ -71,12 +75,9 @@ class _HomePostCardState extends State<HomePostCard> {
         }
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Lỗi: ${e.toString().replaceFirst('Exception: ', '')}'),
-            backgroundColor: AppColors.danger,
-          ),
+        CustomNotification.error(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
         );
       }
     } finally {
@@ -89,12 +90,8 @@ class _HomePostCardState extends State<HomePostCard> {
   // Xử lý khi nhấn nút Chia sẻ
   Future<void> _handleSharePost() async {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tính năng chia sẻ đang được phát triển'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      CustomNotification.info(
+          context, 'Tính năng chia sẻ đang được phát triển');
     }
   }
 
@@ -102,41 +99,49 @@ class _HomePostCardState extends State<HomePostCard> {
   void _deletePost() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Xóa bài viết'),
         content: const Text('Bạn có chắc muốn xóa bài viết này?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Hủy'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đang xóa...')),
-              );
+              Navigator.pop(dialogContext); // Đóng dialog xác nhận
+
+              // Lấy context từ GlobalKey - context này sẽ KHÔNG bị deactivate
+              final keyContext = _key.currentContext;
+              if (keyContext == null || !keyContext.mounted) return;
+
+              // Hiển thị thông báo đang xóa
+              CustomNotification.info(keyContext, 'Đang xóa bài viết...');
+
               try {
                 await _postService.deletePost(widget.post.id);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('✓ Đã xóa bài viết'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
+
+                // Hiển thị thông báo thành công (dùng key context)
+                if (_key.currentContext != null &&
+                    _key.currentContext!.mounted) {
+                  CustomNotification.success(
+                      _key.currentContext!, 'Đã xóa bài viết');
                 }
-                // Gọi callback báo cho HomeScreen biết để xóa khỏi list
-                widget.onPostDeleted();
-              } catch (e) {
+
+                // Đợi notification render
+                await Future.delayed(const Duration(milliseconds: 200));
+
+                // Sau đó mới xóa widget
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          'Lỗi: ${e.toString().replaceFirst('Exception: ', '')}'),
-                      backgroundColor: AppColors.danger,
-                    ),
+                  widget.onPostDeleted();
+                }
+              } catch (e) {
+                // Show error nếu context vẫn còn
+                if (_key.currentContext != null &&
+                    _key.currentContext!.mounted) {
+                  CustomNotification.error(
+                    _key.currentContext!,
+                    e.toString().replaceFirst('Exception: ', ''),
                   );
                 }
               }
@@ -146,9 +151,8 @@ class _HomePostCardState extends State<HomePostCard> {
         ],
       ),
     );
-  }
+  } // Xử lý khi nhấn nút Sửa
 
-  // Xử lý khi nhấn nút Sửa
   void _editPost() async {
     final result = await Navigator.push(
       context,
@@ -156,6 +160,9 @@ class _HomePostCardState extends State<HomePostCard> {
     );
     // Nếu màn hình Sửa trả về true (nghĩa là đã lưu thành công)
     if (result == true) {
+      if (mounted) {
+        CustomNotification.success(context, 'Đã cập nhật bài viết');
+      }
       widget.onPostUpdated(); // Báo cho HomeScreen tải lại
     }
   }
@@ -173,6 +180,7 @@ class _HomePostCardState extends State<HomePostCard> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: _key, // Gắn GlobalKey vào widget root
       onTap: widget.isDetailView
           ? null
           : _navigateToDetail, // Tắt tap khi ở detail view
@@ -235,6 +243,34 @@ class _HomePostCardState extends State<HomePostCard> {
     return 'https://ui-avatars.com/api/?name=$firstLetter&background=${AppColors.primary.value.toRadixString(16).substring(2)}&color=fff&size=80&bold=true';
   }
 
+  // Helper: Lấy icon dựa vào privacy
+  IconData _getPrivacyIcon(String privacy) {
+    switch (privacy) {
+      case 'public':
+        return Icons.public;
+      case 'friends':
+        return Icons.people;
+      case 'private':
+        return Icons.lock;
+      default:
+        return Icons.public;
+    }
+  }
+
+  // Helper: Lấy label hiển thị (optional)
+  String _getPrivacyLabel(String privacy) {
+    switch (privacy) {
+      case 'public':
+        return 'Công khai';
+      case 'friends':
+        return 'Bạn bè';
+      case 'private':
+        return 'Riêng tư';
+      default:
+        return 'Công khai';
+    }
+  }
+
   Widget _buildPostHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -275,8 +311,11 @@ class _HomePostCardState extends State<HomePostCard> {
                       Text(formatPostTime(widget.post.createdAt),
                           style: AppTextStyles.postMeta.copyWith(fontSize: 12)),
                       const SizedBox(width: 4),
-                      Icon(Icons.public,
-                          size: 12, color: AppColors.primary.withOpacity(0.6)),
+                      Icon(
+                        _getPrivacyIcon(widget.post.privacy),
+                        size: 12,
+                        color: AppColors.primary.withOpacity(0.6),
+                      ),
                     ],
                   ),
                 ],
@@ -284,17 +323,35 @@ class _HomePostCardState extends State<HomePostCard> {
             ),
           ),
           PopupMenuButton<String>(
-            icon: Icon(Icons.more_horiz,
-                color: AppColors.primary.withOpacity(0.7)),
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.more_horiz,
+                color: AppColors.primary,
+                size: 20,
+              ),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: AppColors.primary.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            elevation: 8,
+            offset: const Offset(0, 8),
+            color: AppColors.white,
             onSelected: (value) {
               if (value == 'edit')
                 _editPost();
               else if (value == 'delete')
                 _deletePost();
               else if (value == 'report') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Tính năng đang phát triển')),
-                );
+                CustomNotification.info(context, 'Tính năng đang phát triển');
               }
             },
             itemBuilder: (context) {
@@ -302,33 +359,90 @@ class _HomePostCardState extends State<HomePostCard> {
                   widget.post.author.username == widget.username;
               return [
                 if (isMyPost) ...[
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'edit',
-                    child: Row(children: [
-                      Icon(Icons.edit_outlined,
-                          size: 20, color: AppColors.text),
-                      SizedBox(width: 12),
-                      Text('Chỉnh sửa')
-                    ]),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.edit_outlined,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Chỉnh sửa',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.text,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
-                    child: Row(children: [
-                      Icon(Icons.delete_outline,
-                          size: 20, color: AppColors.danger),
-                      SizedBox(width: 12),
-                      Text('Xóa', style: AppTextStyles.deleteDialogText)
-                    ]),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.danger.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Xóa',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ] else ...[
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'report',
-                    child: Row(children: [
-                      Icon(Icons.flag_outlined,
-                          size: 20, color: AppColors.subtitle),
-                      SizedBox(width: 12),
-                      Text('Báo cáo')
-                    ]),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.subtitle.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.flag_outlined,
+                            size: 18,
+                            color: AppColors.subtitle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Báo cáo',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.text,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ];

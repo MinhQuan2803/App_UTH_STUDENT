@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // Cho kDebugMode
 import '../config/app_theme.dart';
 import '../services/post_service.dart';
 import '../services/upload_service.dart';
 import '../services/profile_service.dart';
 import '../models/post_model.dart';
+import '../widgets/custom_notification.dart';
 import 'package:image_picker/image_picker.dart';
 
 class AddPostScreen extends StatefulWidget {
@@ -73,7 +75,7 @@ class _AddPostScreenState extends State<AddPostScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isLoadingUser = false);
-        _showSnackBar('Không thể tải thông tin người dùng', AppColors.danger);
+        CustomNotification.error(context, 'Không thể tải thông tin người dùng');
       }
     }
   }
@@ -106,6 +108,7 @@ class _AddPostScreenState extends State<AddPostScreen>
     setState(() => _isPosting = true);
 
     try {
+      // Upload ảnh mới từ thiết bị
       List<String> uploadedUrls = [];
       if (_selectedImages.isNotEmpty) {
         try {
@@ -140,17 +143,30 @@ class _AddPostScreenState extends State<AddPostScreen>
         }
       }
 
+      // QUAN TRỌNG: Gộp đúng cách
+      // _imageUrls = ảnh cũ còn lại (đã trừ đi ảnh đã xóa qua _removeUrlImage)
+      // uploadedUrls = ảnh mới vừa upload
       final allImageUrls = [..._imageUrls, ...uploadedUrls];
+
+      if (kDebugMode) {
+        print('=== SUBMIT POST DEBUG ===');
+        print('📷 imageUrls (old): $_imageUrls');
+        print('📤 uploadedUrls (new): $uploadedUrls');
+        print('🖼️ allImageUrls (final): $allImageUrls');
+        print('📊 Total images: ${allImageUrls.length}');
+      }
 
       if (_isEditMode) {
         await _postService.updatePost(
           postId: widget.post!.id,
           text: text,
-          mediaUrls: allImageUrls.isEmpty ? null : allImageUrls,
+          // QUAN TRỌNG: Luôn gửi list (có thể rỗng), không gửi null
+          // [] = xóa hết ảnh, [url1, url2] = giữ ảnh
+          mediaUrls: allImageUrls,
           privacy: _selectedPrivacy,
         );
         if (mounted) {
-          _showSnackBar('✓ Đã cập nhật bài viết', AppColors.success);
+          CustomNotification.success(context, 'Đã cập nhật bài viết');
           Navigator.of(context).pop(true);
         }
       } else {
@@ -160,30 +176,22 @@ class _AddPostScreenState extends State<AddPostScreen>
           privacy: _selectedPrivacy,
         );
         if (mounted) {
-          _showSnackBar('✓ Đã đăng bài viết', AppColors.success);
+          CustomNotification.success(context, 'Đã đăng bài viết');
           Navigator.of(context).pop(true);
         }
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('Lỗi: ${e.toString().replaceFirst('Exception: ', '')}',
-            AppColors.danger);
+        CustomNotification.error(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) {
         setState(() => _isPosting = false);
       }
     }
-  }
-
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   Future<void> _pickImages() async {
@@ -195,7 +203,7 @@ class _AddPostScreenState extends State<AddPostScreen>
           _selectedImages.length + _imageUrls.length + images.length;
       if (totalImages > 3) {
         if (mounted) {
-          _showSnackBar('Chỉ được chọn tối đa 3 ảnh', AppColors.warning);
+          CustomNotification.warning(context, 'Chỉ được chọn tối đa 3 ảnh');
         }
         return;
       }
@@ -204,16 +212,31 @@ class _AddPostScreenState extends State<AddPostScreen>
         _selectedImages.addAll(images.map((e) => File(e.path)));
       });
     } catch (e) {
-      if (mounted) _showSnackBar('Lỗi chọn ảnh: $e', AppColors.danger);
+      if (mounted) {
+        CustomNotification.error(context, 'Lỗi chọn ảnh: $e');
+      }
     }
   }
 
   void _removeSelectedImage(int index) {
-    setState(() => _selectedImages.removeAt(index));
+    setState(() {
+      _selectedImages.removeAt(index);
+      if (kDebugMode) {
+        print('🗑️ Removed selected image at index $index');
+        print('📸 Remaining selected images: ${_selectedImages.length}');
+      }
+    });
   }
 
   void _removeUrlImage(int index) {
-    setState(() => _imageUrls.removeAt(index));
+    setState(() {
+      final removedUrl = _imageUrls[index];
+      _imageUrls.removeAt(index);
+      if (kDebugMode) {
+        print('🗑️ Removed URL image at index $index: $removedUrl');
+        print('🖼️ Remaining URL images: $_imageUrls');
+      }
+    });
   }
 
   /// Hiển thị dialog chọn privacy
@@ -574,7 +597,7 @@ class _PostContentField extends StatelessWidget {
         controller: controller,
         autofocus: !isEditMode,
         maxLines: null,
-        minLines: 6,
+        minLines: 1,
         keyboardType: TextInputType.multiline,
         decoration: const InputDecoration(
           hintText: 'Bạn đang nghĩ gì?',
@@ -588,7 +611,7 @@ class _PostContentField extends StatelessWidget {
   }
 }
 
-/// Widget hiển thị danh sách ảnh đã chọn với layout thông minh
+/// Widget hiển thị danh sách ảnh đã chọn với layout giống HomePostCard
 class _ImagePreviewSection extends StatelessWidget {
   final List<String> imageUrls;
   final List<File> selectedImages;
@@ -615,36 +638,40 @@ class _ImagePreviewSection extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: _buildImageGrid(totalCount),
+        child: _buildImageGrid(context, totalCount),
       ),
     );
   }
 
-  Widget _buildImageGrid(int totalCount) {
+  Widget _buildImageGrid(BuildContext context, int totalCount) {
     if (totalCount == 1) {
-      return _buildSingleImage(0);
+      // 1 ảnh: Full width, KHÔNG có AspectRatio (giống HomePostCard)
+      return _buildSingleImage(context, 0);
     } else if (totalCount == 2) {
+      // 2 ảnh: 2 cột bằng nhau với AspectRatio 1:1
       return Row(
         children: [
-          Expanded(child: _buildImageItem(0)),
+          Expanded(child: _buildImageItem(context, 0, aspectRatio: 1)),
           const SizedBox(width: 2),
-          Expanded(child: _buildImageItem(1)),
+          Expanded(child: _buildImageItem(context, 1, aspectRatio: 1)),
         ],
       );
     } else {
-      // 3 ảnh: 1 ảnh lớn bên trái, 2 ảnh nhỏ bên phải
+      // 3 ảnh: 1 ảnh lớn bên trái, 2 ảnh nhỏ bên phải với AspectRatio 1:1
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(flex: 2, child: _buildImageItem(0)),
+          Expanded(
+            flex: 2,
+            child: _buildImageItem(context, 0, aspectRatio: 1),
+          ),
           const SizedBox(width: 2),
           Expanded(
-            flex: 1,
             child: Column(
               children: [
-                _buildImageItem(1),
+                _buildImageItem(context, 1, aspectRatio: 1),
                 const SizedBox(height: 2),
-                _buildImageItem(2),
+                _buildImageItem(context, 2, aspectRatio: 1),
               ],
             ),
           ),
@@ -653,14 +680,13 @@ class _ImagePreviewSection extends StatelessWidget {
     }
   }
 
-  Widget _buildSingleImage(int index) {
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: _buildImageItem(index),
-    );
+  Widget _buildSingleImage(BuildContext context, int index) {
+    // KHÔNG có AspectRatio - để ảnh hiển thị tự nhiên (giống HomePostCard)
+    return _buildImageItem(context, index, aspectRatio: null);
   }
 
-  Widget _buildImageItem(int index) {
+  Widget _buildImageItem(BuildContext context, int index,
+      {double? aspectRatio}) {
     Widget imageWidget;
     VoidCallback onRemove;
 
@@ -670,8 +696,10 @@ class _ImagePreviewSection extends StatelessWidget {
         url,
         fit: BoxFit.cover,
         width: double.infinity,
-        height: double.infinity,
+        // QUAN TRỌNG: Chỉ set height khi có aspectRatio
+        height: aspectRatio != null ? double.infinity : null,
         errorBuilder: (context, error, stackTrace) => Container(
+          height: aspectRatio != null ? double.infinity : 200,
           color: AppColors.imagePlaceholder,
           child: const Icon(Icons.broken_image,
               color: AppColors.subtitle, size: 32),
@@ -685,21 +713,53 @@ class _ImagePreviewSection extends StatelessWidget {
         file,
         fit: BoxFit.cover,
         width: double.infinity,
-        height: double.infinity,
+        // QUAN TRỌNG: Chỉ set height khi có aspectRatio
+        height: aspectRatio != null ? double.infinity : null,
       );
       onRemove = () => onRemoveSelected(fileIndex);
     }
 
-    return Stack(
-      fit: StackFit.expand,
+    Widget content = Stack(
+      fit: aspectRatio != null ? StackFit.expand : StackFit.loose,
       children: [
         imageWidget,
+        // Nút xóa ảnh
         Positioned(
           top: 8,
           right: 8,
           child: _RemoveImageButton(onTap: onRemove),
         ),
       ],
+    );
+
+    // Thêm GestureDetector để xem fullscreen
+    content = GestureDetector(
+      onTap: () => _showImageFullscreen(context, index),
+      child: content,
+    );
+
+    // Chỉ wrap AspectRatio nếu được chỉ định
+    if (aspectRatio != null) {
+      return AspectRatio(
+        aspectRatio: aspectRatio,
+        child: content,
+      );
+    }
+
+    return content;
+  }
+
+  /// Hiển thị ảnh fullscreen với swipe
+  void _showImageFullscreen(BuildContext context, int initialIndex) {
+    final allImages = <dynamic>[...imageUrls, ...selectedImages];
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _ImageViewerScreen(
+          images: allImages,
+          initialIndex: initialIndex,
+        ),
+      ),
     );
   }
 }
@@ -743,51 +803,54 @@ class _BottomToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-      ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Thêm vào bài viết',
-              style: AppTextStyles.toolbarItemText,
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+        ),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Thêm vào bài viết',
+                style: AppTextStyles.toolbarItemText,
+              ),
             ),
-          ),
-          _ToolbarIconButton(
-            icon: Icons.photo_library_outlined,
-            color: AppColors.success,
-            tooltip: 'Ảnh/Video',
-            onTap: onImagePick,
-            isActive: hasImages,
-          ),
-          _ToolbarIconButton(
-            icon: Icons.person_add_outlined,
-            color: AppColors.primary,
-            tooltip: 'Gắn thẻ người khác',
-            onTap: () {
-              // TODO: Implement tagging
-            },
-          ),
-          _ToolbarIconButton(
-            icon: Icons.emoji_emotions_outlined,
-            color: AppColors.warning,
-            tooltip: 'Cảm xúc/Hoạt động',
-            onTap: () {
-              // TODO: Implement feeling/activity
-            },
-          ),
-          _ToolbarIconButton(
-            icon: Icons.location_on_outlined,
-            color: AppColors.danger,
-            tooltip: 'Vị trí',
-            onTap: () {
-              // TODO: Implement location
-            },
-          ),
-        ],
+            _ToolbarIconButton(
+              icon: Icons.photo_library_outlined,
+              color: AppColors.success,
+              tooltip: 'Ảnh/Video',
+              onTap: onImagePick,
+              isActive: hasImages,
+            ),
+            _ToolbarIconButton(
+              icon: Icons.person_add_outlined,
+              color: AppColors.primary,
+              tooltip: 'Gắn thẻ người khác',
+              onTap: () {
+                // TODO: Implement tagging
+              },
+            ),
+            _ToolbarIconButton(
+              icon: Icons.emoji_emotions_outlined,
+              color: AppColors.warning,
+              tooltip: 'Cảm xúc/Hoạt động',
+              onTap: () {
+                // TODO: Implement feeling/activity
+              },
+            ),
+            _ToolbarIconButton(
+              icon: Icons.location_on_outlined,
+              color: AppColors.danger,
+              tooltip: 'Vị trí',
+              onTap: () {
+                // TODO: Implement location
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -910,6 +973,90 @@ class _PrivacyOption extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Màn hình xem ảnh fullscreen với swipe
+class _ImageViewerScreen extends StatefulWidget {
+  final List<dynamic> images; // List chứa String (URL) hoặc File
+  final int initialIndex;
+
+  const _ImageViewerScreen({
+    required this.images,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_ImageViewerScreen> createState() => _ImageViewerScreenState();
+}
+
+class _ImageViewerScreenState extends State<_ImageViewerScreen> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          '${_currentIndex + 1} / ${widget.images.length}',
+          style: const TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.images.length,
+        onPageChanged: (index) {
+          setState(() => _currentIndex = index);
+        },
+        itemBuilder: (context, index) {
+          final image = widget.images[index];
+
+          return InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: image is String
+                  ? Image.network(
+                      image,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.broken_image,
+                          color: Colors.white,
+                          size: 64,
+                        );
+                      },
+                    )
+                  : Image.file(
+                      image as File,
+                      fit: BoxFit.contain,
+                    ),
+            ),
+          );
+        },
       ),
     );
   }

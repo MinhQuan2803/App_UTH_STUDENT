@@ -12,6 +12,8 @@ class AuthService {
 
   // THÊM KEY MỚI
   static const String _tokenKey = 'accessToken';
+  static const String _refreshTokenKey =
+      'refreshToken'; // KEY MỚI cho refresh token
   static const String _usernameKey = 'username'; // Key để lưu username
 
   static const _timeoutDuration = Duration(seconds: 30);
@@ -79,6 +81,20 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final accessToken = body['accessToken'];
+        final refreshToken =
+            body['refreshToken']; // Lấy refresh token từ response
+
+        // DEBUG: Kiểm tra xem server có trả về refresh token không
+        if (kDebugMode) {
+          print('=== LOGIN RESPONSE ===');
+          print('Has accessToken: ${accessToken != null}');
+          print('Has refreshToken: ${refreshToken != null}');
+          if (refreshToken == null) {
+            print('⚠️ WARNING: Server không trả về refreshToken!');
+            print('Response body: $body');
+          }
+        }
+
         if (accessToken != null) {
           // Decode token để lấy thông tin
           Map<String, dynamic> decodedToken = JwtDecoder.decode(accessToken);
@@ -93,8 +109,21 @@ class AuthService {
           final String? userId = decodedToken['userId'];
           final String? username = decodedToken['username'];
 
-          // Lưu token
+          // Lưu access token
           await _storage.write(key: _tokenKey, value: accessToken);
+
+          // Lưu refresh token nếu có
+          if (refreshToken != null) {
+            await _storage.write(key: _refreshTokenKey, value: refreshToken);
+            if (kDebugMode) print('✓ Saved refresh token');
+          } else {
+            // Fallback: Nếu server không trả refreshToken riêng, dùng accessToken
+            // (Một số backend dùng cùng token cho refresh)
+            await _storage.write(key: _refreshTokenKey, value: accessToken);
+            if (kDebugMode)
+              print(
+                  '⚠ No separate refreshToken, using accessToken as fallback');
+          }
 
           // Lưu userId nếu có
           if (userId != null) {
@@ -163,6 +192,7 @@ class AuthService {
     try {
       // Xóa tất cả dữ liệu đã lưu
       await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _refreshTokenKey); // Xóa refresh token
       await _storage.delete(key: _usernameKey);
       await _storage.delete(key: 'userId');
       if (kDebugMode) print('✓ Local tokens and user info deleted');
@@ -176,17 +206,99 @@ class AuthService {
     return await _storage.read(key: _tokenKey);
   }
 
+  // --- HÀM LẤY REFRESH TOKEN ---
+  Future<String?> getRefreshToken() async {
+    return await _storage.read(key: _refreshTokenKey);
+  }
+
   // --- THÊM HÀM MỚI ---
   Future<String?> getUsername() async {
     return await _storage.read(key: _usernameKey);
   }
 
-  // --- THÊM HÀM LẤY USER ID ---
+  // --- HÀM LẤY USER ID ---
   Future<String?> getUserId() async {
     return await _storage.read(key: 'userId');
   }
 
-  // --- HÀM ISLOGGEDIN (CẬP NHẬT: Kiểm tra cả expiration) ---
+  // --- HÀM REFRESH TOKEN ---
+  /// Dùng refresh token để lấy access token mới
+  Future<bool> refreshAccessToken() async {
+    try {
+      final refreshToken = await getRefreshToken();
+
+      if (refreshToken == null) {
+        if (kDebugMode) print('✗ No refresh token available');
+        return false;
+      }
+
+      if (kDebugMode) {
+        print('=== REFRESHING ACCESS TOKEN ===');
+        print('Refresh token exists: ${refreshToken.substring(0, 20)}...');
+      }
+
+      // Gửi refresh token theo format backend yêu cầu
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/refresh'),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'refreshToken': refreshToken, // Gửi trong body
+            }),
+          )
+          .timeout(_timeoutDuration);
+
+      if (kDebugMode) {
+        print('Refresh response status: ${response.statusCode}');
+        print('Refresh response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final newAccessToken = body['accessToken'];
+
+        if (newAccessToken != null) {
+          // Lưu access token mới
+          await _storage.write(key: _tokenKey, value: newAccessToken);
+
+          // Cập nhật refresh token nếu server trả về mới
+          final newRefreshToken = body['refreshToken'];
+          if (newRefreshToken != null) {
+            await _storage.write(key: _refreshTokenKey, value: newRefreshToken);
+            if (kDebugMode) print('✓ New refresh token also saved');
+          }
+
+          if (kDebugMode) print('✓ Access token refreshed successfully');
+          return true;
+        } else {
+          if (kDebugMode) print('✗ Response 200 but no accessToken in body');
+          return false;
+        }
+      } else {
+        if (kDebugMode) {
+          print('✗ Refresh failed with status: ${response.statusCode}');
+          print('✗ Error message: ${response.body}');
+        }
+        // Refresh token hết hạn/không hợp lệ → Xóa tokens
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _refreshTokenKey);
+        return false;
+      }
+    } on TimeoutException {
+      if (kDebugMode) print('✗ Refresh timeout - network issue');
+      return false;
+    } on SocketException {
+      if (kDebugMode) print('✗ Refresh failed - no internet');
+      return false;
+    } catch (e) {
+      if (kDebugMode) print('✗ Refresh token error: $e');
+      return false;
+    }
+  }
+
+  // --- HÀM ISLOGGEDIN (CẬP NHẬT: Tự động refresh khi hết hạn) ---
   Future<bool> isLoggedIn() async {
     try {
       final token = await getToken();
@@ -200,10 +312,28 @@ class AuthService {
       bool isExpired = JwtDecoder.isExpired(token);
 
       if (isExpired) {
-        // Token hết hạn, xóa token cũ
-        if (kDebugMode) print('⚠ Token expired, clearing...');
-        await signOut();
-        return false;
+        // Token hết hạn, thử refresh (nếu có refresh token)
+        if (kDebugMode) print('⚠ Token expired, trying to refresh...');
+
+        final hasRefreshToken = await getRefreshToken();
+        if (hasRefreshToken != null) {
+          // Có refresh token → thử refresh
+          final refreshed = await refreshAccessToken();
+
+          if (refreshed) {
+            if (kDebugMode) print('✓ Token refreshed, user still logged in');
+            return true;
+          } else {
+            if (kDebugMode) print('✗ Refresh failed, user logged out');
+            return false;
+          }
+        } else {
+          // Không có refresh token → đăng xuất (backend chưa hỗ trợ)
+          if (kDebugMode)
+            print('✗ No refresh token, backend not support refresh mechanism');
+          await signOut();
+          return false;
+        }
       }
 
       // Token còn hợp lệ
@@ -219,5 +349,51 @@ class AuthService {
       await signOut();
       return false;
     }
+  }
+
+  // --- HÀM LẤY TOKEN HỢP LỆ (Tự động refresh nếu cần) ---
+  /// Lấy access token hợp lệ, tự động refresh nếu hết hạn hoặc sắp hết hạn
+  /// Refresh khi còn < 5 phút để tránh lỗi giữa chừng request
+  Future<String?> getValidToken() async {
+    final token = await getToken();
+
+    if (token == null) return null;
+
+    // Kiểm tra token còn hạn không
+    bool isExpired = JwtDecoder.isExpired(token);
+
+    // Kiểm tra token sắp hết hạn (còn < 5 phút)
+    Duration remainingTime = Duration.zero;
+    try {
+      remainingTime = JwtDecoder.getRemainingTime(token);
+    } catch (e) {
+      if (kDebugMode) print('✗ Cannot get remaining time: $e');
+      isExpired = true;
+    }
+
+    bool aboutToExpire = remainingTime.inMinutes < 5;
+
+    if (isExpired || aboutToExpire) {
+      if (kDebugMode) {
+        if (isExpired) {
+          print('⚠ Token expired, refreshing...');
+        } else {
+          print(
+              '⚠ Token about to expire (${remainingTime.inMinutes}m left), refreshing...');
+        }
+      }
+
+      // Tự động refresh
+      final refreshed = await refreshAccessToken();
+      if (refreshed) {
+        // Lấy token mới sau khi refresh
+        return await getToken();
+      } else {
+        if (kDebugMode) print('✗ Cannot refresh token');
+        return null;
+      }
+    }
+
+    return token;
   }
 }

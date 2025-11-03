@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../config/app_theme.dart';
 import '../widgets/custom_button.dart';
+import '../widgets/modern_app_bar.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -20,7 +21,7 @@ class _WalletScreenState extends State<WalletScreen> {
     // TODO: Tích hợp API thanh toán điện tử (MoMo, ZaloPay...)
     // Dựa trên _selectedPackage và _selectedMethod
     print('Nạp $_selectedPackage Điểm bằng $_selectedMethod');
-    
+
     // Hiển thị thông báo (ví dụ)
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -34,12 +35,8 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Ví UTH của tôi', style: AppTextStyles.appBarTitle),
-        backgroundColor: AppColors.white,
-        iconTheme: const IconThemeData(color: AppColors.text),
-        elevation: 1,
-        shadowColor: AppColors.divider,
+      appBar: const ModernAppBar(
+        title: 'Ví UTH của tôi',
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -50,12 +47,14 @@ class _WalletScreenState extends State<WalletScreen> {
             _buildBalanceCard(),
             const SizedBox(height: 24),
             // Chọn gói nạp
-            Text('Chọn gói nạp điểm', style: AppTextStyles.sectionTitle.copyWith(fontSize: 16)),
+            Text('Chọn gói nạp điểm',
+                style: AppTextStyles.sectionTitle.copyWith(fontSize: 16)),
             const SizedBox(height: 12),
             _buildPackageSelector(),
             const SizedBox(height: 24),
             // Chọn phương thức thanh toán
-            Text('Chọn phương thức thanh toán', style: AppTextStyles.sectionTitle.copyWith(fontSize: 16)),
+            Text('Chọn phương thức thanh toán',
+                style: AppTextStyles.sectionTitle.copyWith(fontSize: 16)),
             const SizedBox(height: 12),
             _buildPaymentMethodSelector(),
             const SizedBox(height: 32),
@@ -82,31 +81,38 @@ class _WalletScreenState extends State<WalletScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+              color: AppColors.primary.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Số dư hiện tại',
-            style: AppTextStyles.bodyRegular.copyWith(color: AppColors.white.withOpacity(0.9)),
+            style: AppTextStyles.bodyRegular
+                .copyWith(color: AppColors.white.withOpacity(0.9)),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              SvgPicture.asset(
-                AppAssets.iconCoin, 
-                width: 32, height: 32, 
-                colorFilter: const ColorFilter.mode(AppColors.white, BlendMode.srcIn)
-              ),
+              SvgPicture.asset(AppAssets.iconCoin,
+                  width: 32,
+                  height: 32,
+                  colorFilter:
+                      const ColorFilter.mode(AppColors.white, BlendMode.srcIn)),
               const SizedBox(width: 10),
               // TODO: Thay 150 bằng số dư thật từ API
-              Text('150', style: AppTextStyles.walletBalance.copyWith(color: AppColors.white)),
+              Text('150',
+                  style: AppTextStyles.walletBalance
+                      .copyWith(color: AppColors.white)),
               const SizedBox(width: 8),
-              Text(
-                'Điểm', 
-                style: AppTextStyles.bodyBold.copyWith(color: AppColors.white, fontSize: 20)
-              ),
+              Text('Điểm',
+                  style: AppTextStyles.bodyBold
+                      .copyWith(color: AppColors.white, fontSize: 20)),
             ],
           ),
         ],
@@ -139,7 +145,8 @@ class _WalletScreenState extends State<WalletScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.1) : AppColors.white,
+          color:
+              isSelected ? AppColors.primary.withOpacity(0.1) : AppColors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.divider,
@@ -152,13 +159,19 @@ class _WalletScreenState extends State<WalletScreen> {
           children: [
             Row(
               children: [
-                SvgPicture.asset(AppAssets.iconCoin, width: 16, height: 16, colorFilter: const ColorFilter.mode(AppColors.coinColor, BlendMode.srcIn)),
+                SvgPicture.asset(AppAssets.iconCoin,
+                    width: 16,
+                    height: 16,
+                    colorFilter: const ColorFilter.mode(
+                        AppColors.coinColor, BlendMode.srcIn)),
                 const SizedBox(width: 6),
                 Text('$points Điểm', style: AppTextStyles.bodyBold),
               ],
             ),
             const SizedBox(height: 4),
-            Text(amount, style: AppTextStyles.bodyRegular.copyWith(color: AppColors.subtitle)),
+            Text(amount,
+                style: AppTextStyles.bodyRegular
+                    .copyWith(color: AppColors.subtitle)),
           ],
         ),
       ),
@@ -183,27 +196,31 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildPaymentOption({required String logoAsset, required String title, required String value}) {
+  Widget _buildPaymentOption(
+      {required String logoAsset,
+      required String title,
+      required String value}) {
     final isSelected = _selectedMethod == value;
     return GestureDetector(
       onTap: () => setState(() => _selectedMethod = value),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-             color: isSelected ? AppColors.primary : AppColors.divider,
-            width: isSelected ? 2 : 1,
-          )
-        ),
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.divider,
+              width: isSelected ? 2 : 1,
+            )),
         child: Row(
           children: [
             SvgPicture.asset(logoAsset, width: 32, height: 32),
             const SizedBox(width: 12),
             Expanded(child: Text(title, style: AppTextStyles.bodyBold)),
             Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
               color: AppColors.primary,
             ),
           ],
@@ -212,4 +229,3 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 }
-

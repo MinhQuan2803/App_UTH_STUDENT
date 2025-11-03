@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 import '../widgets/home_post_card.dart';
 import '../widgets/comment_item.dart'; // Import CommentInput và CommentItem
+import '../widgets/custom_notification.dart';
+import '../widgets/modern_app_bar.dart';
 import '../models/post_model.dart';
 import '../models/comment_model.dart';
 import '../services/comment_service.dart';
@@ -175,11 +177,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message.replaceFirst('Exception: ', '')),
-        backgroundColor: AppColors.danger,
-      ),
+    CustomNotification.error(
+      context,
+      message.replaceFirst('Exception: ', ''),
     );
   }
 
@@ -187,13 +187,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text('${_currentPost.author.username}\'s Post',
-            style: AppTextStyles.appBarTitle),
-        backgroundColor: AppColors.white,
-        iconTheme: const IconThemeData(color: AppColors.text),
-        elevation: 1,
-        shadowColor: AppColors.divider,
+      appBar: ModernAppBar(
+        title: 'Bài viết của ${_currentPost.author.username}',
       ),
       body: Column(
         children: [
@@ -214,7 +209,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         Navigator.pop(context, true);
                       },
                       onPostUpdated: () {
-                        _showErrorSnackBar('Cập nhật thành công (cần reload)');
+                        CustomNotification.success(
+                            context, 'Đã cập nhật bài viết');
                       },
                     ),
                     const Divider(color: AppColors.dividerLight, thickness: 6),
@@ -315,13 +311,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         comment: comment,
                         onLike: () {
                           // TODO: Implement like comment
-                          _showErrorSnackBar('Tính năng đang phát triển');
+                          CustomNotification.info(
+                              context, 'Tính năng đang phát triển');
                         },
                         onReply: () => _startReply(comment),
                         onEdit: isOwner
                             ? () {
                                 // TODO: Implement edit comment
-                                _showErrorSnackBar('Tính năng đang phát triển');
+                                CustomNotification.info(
+                                    context, 'Tính năng đang phát triển');
                               }
                             : null,
                         onDelete: isOwner
@@ -434,7 +432,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             onPressed: () async {
               Navigator.pop(context);
               // TODO: Implement delete comment API
-              _showErrorSnackBar('Tính năng xóa bình luận đang phát triển');
+              CustomNotification.info(
+                  context, 'Tính năng xóa bình luận đang phát triển');
               // try {
               //   await _commentService.deleteComment(commentId: comment.id);
               //   _refreshComments();

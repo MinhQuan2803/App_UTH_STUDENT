@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart'; // Import package
 import '../config/app_theme.dart';
+import '../widgets/modern_app_bar.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String initialUrl;
@@ -34,21 +35,21 @@ class _WebViewScreenState extends State<WebViewScreen> {
             // print('WebView is loading (progress : $progress%)');
           },
           onPageStarted: (String url) {
-             setState(() {
-               _isLoading = true;
-             });
+            setState(() {
+              _isLoading = true;
+            });
           },
           onPageFinished: (String url) {
-             setState(() {
-               _isLoading = false;
-             });
+            setState(() {
+              _isLoading = false;
+            });
           },
           onWebResourceError: (WebResourceError error) {
-             print('WebView error: ${error.description}');
-             // Có thể hiển thị thông báo lỗi
-              setState(() {
-               _isLoading = false; // Dừng loading khi có lỗi
-             });
+            print('WebView error: ${error.description}');
+            // Có thể hiển thị thông báo lỗi
+            setState(() {
+              _isLoading = false; // Dừng loading khi có lỗi
+            });
           },
           onNavigationRequest: (NavigationRequest request) {
             // Ngăn chặn điều hướng đến các link không mong muốn nếu cần
@@ -65,20 +66,44 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title ?? 'Chi tiết', style: AppTextStyles.appBarTitle),
-        backgroundColor: AppColors.white,
-        iconTheme: const IconThemeData(color: AppColors.text),
-        elevation: 1,
-        shadowColor: AppColors.divider,
+      appBar: ModernAppBar(
+        title: widget.title ?? 'Chi tiết',
+        actions: [
+          ModernIconButton(
+            icon: Icons.refresh,
+            onPressed: () => _controller.reload(),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),
-          // Hiển thị vòng tròn loading khi đang tải trang
+          // Hiển thị loading đẹp hơn khi đang tải trang
           if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
+            Container(
+              color: AppColors.white,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      strokeWidth: 3,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Đang tải...',
+                      style: TextStyle(
+                        color: AppColors.subtitle,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
         ],
       ),

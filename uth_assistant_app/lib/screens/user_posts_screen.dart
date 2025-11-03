@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 import '../widgets/home_post_card.dart';
 import '../widgets/custom_button.dart';
+import '../widgets/modern_app_bar.dart';
 import '../services/auth_service.dart';
 import '../services/post_service.dart';
 import '../models/post_model.dart';
@@ -73,13 +74,8 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text('Bài viết của ${widget.username}',
-            style: AppTextStyles.appBarTitle),
-        backgroundColor: AppColors.white,
-        iconTheme: const IconThemeData(color: AppColors.text),
-        elevation: 1,
-        shadowColor: AppColors.divider,
+      appBar: ModernAppBar(
+        title: 'Bài viết của ${widget.username}',
       ),
       body: _buildPostsList(),
     );

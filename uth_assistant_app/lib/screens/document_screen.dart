@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../config/app_theme.dart';
 import '../widgets/document_list_item.dart';
+import '../widgets/simple_wave_header.dart';
 
 class DocumentScreen extends StatefulWidget {
   const DocumentScreen({super.key});
@@ -28,38 +29,33 @@ class _DocumentScreenState extends State<DocumentScreen>
 
   @override
   Widget build(BuildContext context) {
-    // CẬP NHẬT: Sử dụng Stack để đặt nút Tải lên bên trên nội dung
+    // Sử dụng Stack để đặt nút Tải lên bên trên nội dung
     return Stack(
       children: [
         Column(
           children: [
-            Container(
-              color: AppColors.white,
-              child: SafeArea(
-                bottom: false,
-                child: Column(
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12.0),
-                      child: Text('Tài liệu học tập',
-                          style: AppTextStyles.appBarTitle),
-                    ),
-                    TabBar(
-                      controller: _tabController,
-                      indicatorColor: AppColors.primary,
-                      labelColor: AppColors.primary,
-                      unselectedLabelColor: AppColors.subtitle,
-                      labelStyle: AppTextStyles.tabLabel,
-                      indicatorWeight: 3.0,
-                      tabs: const [
-                        Tab(text: 'Tất cả'),
-                        Tab(text: 'Của tôi'),
-                        Tab(text: 'Đã thích'),
-                      ],
-                    ),
-                  ],
+            Column(
+              children: [
+                const SimpleWaveHeader(
+                  title: 'Tài liệu học tập',
                 ),
-              ),
+                Container(
+                  color: AppColors.white,
+                  child: TabBar(
+                    controller: _tabController,
+                    indicatorColor: AppColors.primary,
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: AppColors.subtitle,
+                    labelStyle: AppTextStyles.tabLabel,
+                    indicatorWeight: 3.0,
+                    tabs: const [
+                      Tab(text: 'Tất cả'),
+                      Tab(text: 'Của tôi'),
+                      Tab(text: 'Đã thích'),
+                    ],
+                  ),
+                ),
+              ],
             ),
             Expanded(
               child: TabBarView(

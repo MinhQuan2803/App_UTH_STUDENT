@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../config/app_theme.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/suggestion_chip.dart';
+import '../widgets/simple_wave_header.dart';
 
 class ChatbotScreen extends StatelessWidget {
   const ChatbotScreen({super.key});
@@ -11,47 +12,35 @@ class ChatbotScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AppBar(
-          backgroundColor: AppColors.white,
-          elevation: 1,
-          shadowColor: AppColors.divider,
-          // ĐÃ THÊM LẠI: Nút back để quay lại màn hình trước đó trên stack
-          leading: IconButton(
-            icon: SvgPicture.asset(AppAssets.iconChevronLeft),
-            onPressed: () {
-              // Hành động pop mặc định sẽ quay lại route trước đó (LoginScreen)
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              }
-            },
-          ),
-          title: const Text('Hỏi UTH Assistant', style: AppTextStyles.appBarTitle),
-          centerTitle: true,
+        const SimpleWaveHeader(
+          title: 'Hỏi UTH Assistant',
         ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(16.0),
             children: const [
               ChatBubble(
-                text: 'Chào bạn! Tôi là UTH Assistant. Tôi có thể giúp gì cho bạn hôm nay?',
+                text:
+                    'Chào bạn! Tôi là UTH Assistant. Tôi có thể giúp gì cho bạn hôm nay?',
                 isFromUser: false,
               ),
-               SizedBox(height: 12),
+              SizedBox(height: 12),
               ChatBubble(
                 text: 'Lịch thi cuối kỳ khi nào có?',
                 isFromUser: true,
               ),
-               SizedBox(height: 12),
+              SizedBox(height: 12),
               ChatBubble(
-                text: 'Theo thông báo mới nhất từ phòng đào tạo, lịch thi dự kiến sẽ được công bố vào ngày 25/10/2025 bạn nhé.',
+                text:
+                    'Theo thông báo mới nhất từ phòng đào tạo, lịch thi dự kiến sẽ được công bố vào ngày 25/10/2025 bạn nhé.',
                 isFromUser: false,
               ),
-               SizedBox(height: 12),
+              SizedBox(height: 12),
               ChatBubble(
                 text: 'Cảm ơn bạn nhé!',
                 isFromUser: true,
               ),
-               SizedBox(height: 12),
+              SizedBox(height: 12),
               ChatBubble(
                 isTyping: true,
                 isFromUser: false,
@@ -103,13 +92,16 @@ class _ChatInputArea extends StatelessWidget {
                     fillColor: AppColors.inputBackground,
                     prefixIcon: Padding(
                       padding: const EdgeInsets.all(12.0),
-                      child: SvgPicture.asset(AppAssets.iconMic, colorFilter: const ColorFilter.mode(AppColors.subtitle, BlendMode.srcIn)),
+                      child: SvgPicture.asset(AppAssets.iconMic,
+                          colorFilter: const ColorFilter.mode(
+                              AppColors.subtitle, BlendMode.srcIn)),
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 16, horizontal: 20),
                   ),
                 ),
               ),
@@ -121,10 +113,13 @@ class _ChatInputArea extends StatelessWidget {
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     backgroundColor: AppColors.primary,
                   ),
-                  child: SvgPicture.asset(AppAssets.iconSend, colorFilter: const ColorFilter.mode(AppColors.white, BlendMode.srcIn)),
+                  child: SvgPicture.asset(AppAssets.iconSend,
+                      colorFilter: const ColorFilter.mode(
+                          AppColors.white, BlendMode.srcIn)),
                 ),
               )
             ],
@@ -134,4 +129,3 @@ class _ChatInputArea extends StatelessWidget {
     );
   }
 }
-
