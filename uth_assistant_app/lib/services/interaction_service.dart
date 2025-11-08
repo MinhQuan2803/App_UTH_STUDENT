@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../config/app_theme.dart';
 
 /// Service xử lý tương tác với bài viết (like, comment)
 /// ✅ ĐÃ CẬP NHẬT THEO TÀI LIỆU API CHÍNH THỨC
 class InteractionService {
+  // Sử dụng production base URL (không có /posts hay /users, chỉ /api)
   static const String baseUrl = 'https://uthstudent.onrender.com/api';
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 

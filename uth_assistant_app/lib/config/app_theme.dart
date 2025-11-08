@@ -11,19 +11,13 @@ class AppColors {
   static const Color splashBackground =
       Color(0xFF038D8F); // Màu nền Splash Screen
   static const Color transparent = Colors.transparent;
-  static const Color warning = Colors.orange; // BỔ SUNG
-
-
-  static const Color coinColor = Color(0xFFFFC107); // Vàng cho điểm UTH
 
   // Màu chữ
-  static const Color text = Color(0xFF1A1A1A); // Đen đậm, nhưng không quá gắt
-  static const Color subtitle =
-      Color(0xFF5A6472); // Xám đậm hơn cho độ tương phản
+  static const Color text = Color(0xFF1A1A1A);
+  static const Color subtitle = Color(0xFF5A6472);
   static const Color hintText = Color(0xFF9AA4B2);
   static const Color textSecondary = Color(0xFF5A6472);
-  static const Color avatarPlaceholderText =
-      AppColors.primary; // Màu chữ cho avatar placeholder
+  static const Color avatarPlaceholderText = AppColors.primary;
 
   // Màu cho Add Post Screen
   static const Color postCardBorder = Color(0xFFE4E6EB);
@@ -35,10 +29,8 @@ class AppColors {
   // Màu giao diện
   static const Color divider = Color(0xFFEAEFF5);
   static const Color dividerLight = Color(0xFFF0F3F7);
-  static const Color inputBackground =
-      Color(0xFFFFFFFF); // Nền trắng cho ô nhập liệu
-  static const Color shadow =
-      Color.fromRGBO(90, 108, 123, 0.08); // Bóng đổ nhẹ nhàng hơn
+  static const Color inputBackground = Color(0xFFFFFFFF);
+  static const Color shadow = Color.fromRGBO(90, 108, 123, 0.08);
   static const Color imagePlaceholder = Color(0xFFE0E0E0);
   static final Color imageOverlay = Colors.black.withOpacity(0.5);
 
@@ -55,10 +47,13 @@ class AppColors {
   static const Color avatarBorderGradientEnd = Color(0xFFFF6B9D);
 
   // Màu trạng thái
-  static const Color liked = Color(0xFFFF4081); // Dùng màu accent
+  static const Color liked = Color(0xFFFF4081);
   static const Color notificationDot = Color(0xFFFF4081);
   static const Color danger = Color(0xFFD32F2F);
-  static const Color success = Colors.green; // Thêm màu success
+  static const Color success = Colors.green;
+  static const Color warning = Colors.orange;
+  static const Color coinColor = Color(0xFFFFC107); // Vàng cho điểm UTH
+
   // Màu cho các loại file
   static const Color pdfBackground = Color(0xFFFFF0E5);
   static const Color pdfText = Color(0xFFFB8C00);
@@ -104,34 +99,6 @@ class AppTextStyles {
       fontWeight: FontWeight.w700,
       color: AppColors.white);
 
-  // Màn hình Thêm bài viết
-  static const TextStyle addPostUserName = TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 15,
-      fontWeight: FontWeight.w600,
-      color: AppColors.text);
-  static final TextStyle addPostHintText = TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 15,
-      color: AppColors.hintText,
-      fontWeight: FontWeight.w400);
-  static const TextStyle addPostInputText = TextStyle(
-      fontFamily: 'Inter', fontSize: 15, color: AppColors.text, height: 1.4);
-  static const TextStyle addPostPrivacy = TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 13,
-      fontWeight: FontWeight.w500,
-      color: AppColors.toolbarItem);
-  static const TextStyle toolbarItemText = TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      color: AppColors.toolbarItem);
-  static const TextStyle bottomToolbarTitle = TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 14,
-      fontWeight: FontWeight.w600,
-      color: AppColors.text);
   // Tiêu đề
   static const TextStyle heading1 = TextStyle(
       fontFamily: 'Inter',
@@ -158,19 +125,22 @@ class AppTextStyles {
   // Bài viết (Post)
   static const TextStyle postName = TextStyle(
       fontFamily: 'Inter',
-      fontSize: 13,
+      fontSize: 15,
       fontWeight: FontWeight.w600,
       color: AppColors.text);
   static const TextStyle postMeta =
-      TextStyle(fontFamily: 'Inter', fontSize: 10, color: AppColors.subtitle);
+      TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppColors.subtitle);
   static const TextStyle postContent = TextStyle(
-      fontFamily: 'Inter', fontSize: 13, color: AppColors.text, height: 1.4);
+      fontFamily: 'Inter', fontSize: 15, color: AppColors.text, height: 1.4);
   static const TextStyle interaction = TextStyle(
-      fontFamily: 'Inter', fontSize: 12, color: AppColors.textSecondary);
+      fontFamily: 'Inter',
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      color: AppColors.subtitle);
 
   // Nút bấm & Nhập liệu
   static const TextStyle button =
-      TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w600);
+      TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700);
   static const TextStyle hintText =
       TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.hintText);
   static const TextStyle suggestionChip = TextStyle(
@@ -192,9 +162,18 @@ class AppTextStyles {
   static const TextStyle errorText =
       TextStyle(fontFamily: 'Inter', color: AppColors.danger, fontSize: 14);
 
-// ví
- static const TextStyle priceTag = TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary);
-  static const TextStyle walletBalance = TextStyle(fontFamily: 'Inter', fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary);
+  // Ví
+  static const TextStyle priceTag = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 13,
+      fontWeight: FontWeight.bold,
+      color: AppColors.primary);
+  static const TextStyle walletBalance = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 32,
+      fontWeight: FontWeight.bold,
+      color: AppColors.primary);
+
   // Tài liệu
   static const TextStyle documentTitle = TextStyle(
       fontFamily: 'Inter',
@@ -205,17 +184,6 @@ class AppTextStyles {
       TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppColors.subtitle);
   static const TextStyle fileTypeLabel =
       TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700);
-
-  static const TextStyle actionButton =
-      TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600);
-  static const TextStyle imageOverlayText = TextStyle(
-      fontFamily: 'Inter',
-      color: Colors.white,
-      fontSize: 32,
-      fontWeight: FontWeight.bold);
-  static const TextStyle bottomSheetName =
-      TextStyle(fontFamily: 'Inter', fontSize: 18, fontWeight: FontWeight.bold);
-  static const TextStyle deleteDialogText = TextStyle(color: AppColors.danger);
 
   // Hồ sơ
   static const TextStyle profileName = TextStyle(
@@ -256,7 +224,57 @@ class AppTextStyles {
         Shadow(color: Colors.black26, offset: Offset(2, 2), blurRadius: 4)
       ]);
 
+  // Màn hình Thêm bài viết
+  static const TextStyle addPostUserName = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      color: AppColors.text);
+  static final TextStyle addPostHintText = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 16,
+      color: AppColors.subtitle.withOpacity(0.6),
+      fontWeight: FontWeight.w400);
+  static const TextStyle addPostInputText = TextStyle(
+      fontFamily: 'Inter', fontSize: 16, color: AppColors.text, height: 1.5);
+  static const TextStyle bottomToolbarTitle = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: AppColors.text);
+  static const TextStyle addPostPrivacy = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+      color: AppColors.toolbarItem);
+  static const TextStyle toolbarItemText = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+      color: AppColors.toolbarItem);
+
   // Kiểu chữ cho ảnh
+  static const TextStyle imageOverlayText = TextStyle(
+      fontFamily: 'Inter',
+      color: Colors.white,
+      fontSize: 32,
+      fontWeight: FontWeight.bold);
+
+  // Kiểu chữ cho menu/dialog
+  static const TextStyle deleteDialogText =
+      TextStyle(fontFamily: 'Inter', color: AppColors.danger);
+  static const TextStyle actionButton =
+      TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600);
+  static const TextStyle dialogTitle = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 20,
+      fontWeight: FontWeight.w700,
+      color: AppColors.text);
+  static const TextStyle dialogMessage = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 15,
+      color: AppColors.subtitle,
+      height: 1.4);
 }
 
 // Lớp quản lý đường dẫn tài sản (assets)
@@ -266,9 +284,123 @@ class AppAssets {
   static const String _imagesPicPath = 'assets/images_pic';
 
   // --- API URLS ---
-  static const String newsApiUrl = 'http://192.168.1.12:3000/api/news';
-  static const String uploadApiBaseUrl =
-      'https://uthstudent.onrender.com/api/upload';
+  static const bool _isLocal = false;
+  static const String _prodBaseUrl = 'https://uthstudent.onrender.com/api';
+  // TODO: Thay '192.168.1.11' bằng IP Wifi của máy tính bạn
+  static const String _localBaseUrl = 'http://10.160.174.39:5000/api';
+
+  static final String _apiBaseUrl = _isLocal ? _localBaseUrl : _prodBaseUrl;
+
+  static final String authApiBaseUrl = '$_apiBaseUrl/auth';
+  static final String postApiBaseUrl = '$_apiBaseUrl/posts';
+  static final String commentApiBaseUrl = '$_apiBaseUrl/comments';
+  // SỬA LỖI: uploadApiBaseUrl phải trỏ về local
+  static final String uploadApiBaseUrl = '$_apiBaseUrl/upload';
+  static final String documentApiBaseUrl = '$_apiBaseUrl/documents';
+  static final String paymentApiBaseUrl = '$_apiBaseUrl/payment';
+  static final String userApiBaseUrl = '$_apiBaseUrl/users';
+
+  static const String newsApiUrl = _isLocal
+      ? 'http://192.168.2.4:5000/api/uth/thongbaouth'
+      : 'https://uthstudent.onrender.com/api/uth/thongbaouth';
+
+  static const String vnpayReturnUrl =
+      'https://calvin-capiteaux-reiko.ngrok-free.dev/api/payment/vnpay/vnpay-return';
+
+  // --- CÁC CONSTANTS CHO PAYMENT ---
+  // Tỷ lệ quy đổi: 1 điểm = 1000 VND
+  static const int pointToVndRate = 1000;
+
+  // Số điểm nạp tối thiểu
+  static const int minPoints = 10;
+
+  // Thời gian polling (giây)
+  static const int pollingIntervalSeconds = 3;
+
+  // Số lần polling tối đa (60 lần x 3s = 3 phút)
+  static const int maxPollingAttempts = 60;
+
+  // Thời gian delay giữa các dialog (milliseconds)
+  static const int dialogDelayMs = 300;
+
+  // Thời gian delay đóng WebView (milliseconds)
+  static const int webViewCloseDelayMs = 100;
+
+  // --- CÁC TỪNG KHÓA RETURN URL ---
+  // Danh sách các từ khóa trong returnUrl để phát hiện redirect
+  static const List<String> paymentReturnUrlKeywords = [
+    'ngrok-free.dev',
+    'vnpay-return',
+    'payment-result',
+  ];
+
+  // --- GÓI NẠP ĐIỂM MẶC ĐỊNH ---
+  static const Map<String, Map<String, dynamic>> defaultPaymentPackages = {
+    '20': {'amount': 20000, 'label': '20.000đ'},
+    '50': {'amount': 50000, 'label': '50.000đ'},
+    '100': {'amount': 100000, 'label': '100.000đ'},
+    '200': {'amount': 200000, 'label': '200.000đ'},
+  };
+
+  // Gói nạp mặc định được chọn
+  static const String defaultSelectedPackage = '50';
+
+  // --- CÁC CONSTANTS CHO UI ---
+  // Border radius
+  static const double borderRadiusSmall = 8.0;
+  static const double borderRadiusMedium = 10.0;
+  static const double borderRadiusLarge = 12.0;
+
+  // Padding & Spacing
+  static const double paddingSmall = 8.0;
+  static const double paddingMedium = 12.0;
+  static const double paddingLarge = 16.0;
+  static const double paddingXLarge = 20.0;
+
+  // Icon sizes
+  static const double iconSizeSmall = 16.0;
+  static const double iconSizeMedium = 24.0;
+  static const double iconSizeLarge = 32.0;
+
+  // Avatar sizes
+  static const double avatarSizeSmall = 32.0;
+  static const double avatarSizeMedium = 40.0;
+  static const double avatarSizeLarge = 80.0;
+
+  // Button height
+  static const double buttonHeightSmall = 36.0;
+  static const double buttonHeightMedium = 44.0;
+  static const double buttonHeightLarge = 50.0;
+
+  // --- CÁC MESSAGES THÔNG BÁO ---
+  // Payment messages
+  static const String paymentSuccessTitle = 'Thanh toán thành công! 🎉';
+  static const String paymentSuccessMessage =
+      'Số điểm đã được cộng vào tài khoản của bạn.';
+  static const String paymentFailedTitle = 'Thanh toán thất bại';
+  static const String paymentFailedMessage =
+      'Giao dịch không thành công. Vui lòng thử lại.';
+  static const String paymentTimeoutTitle = 'Hết thời gian chờ';
+  static const String paymentTimeoutMessage =
+      'Vui lòng kiểm tra lại trạng thái giao dịch trong lịch sử.';
+  static const String paymentWaitingMessage = 'Đang chờ xác nhận thanh toán...';
+  static const String paymentProcessingMessage =
+      'Vui lòng hoàn tất thanh toán trên VNPay';
+
+  // Validation messages
+  static const String invalidPointsTitle = 'Số điểm không hợp lệ';
+  static const String invalidPointsMessage =
+      'Vui lòng nhập số điểm bạn muốn nạp (lớn hơn 0).';
+  static const String minAmountTitle = 'Số tiền quá nhỏ';
+  static const String minAmountMessage =
+      'Số tiền nạp tối thiểu là 10.000đ (tương ứng 10 điểm).';
+
+  // Error messages
+  static const String loadBalanceErrorTitle = 'Lỗi tải số dư';
+  static const String createPaymentErrorTitle = 'Lỗi tạo thanh toán';
+  static const String checkStatusErrorTitle = 'Không thể kiểm tra trạng thái';
+  static const String checkStatusErrorMessage =
+      'Vui lòng kiểm tra lịch sử giao dịch sau.';
 
   // --- ẢNH LỚN ---
   static const String defaultNotificationImage =
@@ -295,6 +427,15 @@ class AppAssets {
   static const String iconSettings = '$_imagesPath/icon_settings.svg';
   static const String iconLogout = '$_imagesPath/icon_logout.svg';
 
+  // --- ICON TÍNH NĂNG ---
+  static const String iconWallet = '$_imagesPath/icon_wallet.svg';
+  static const String iconCoin = '$_imagesPath/icon_coin.svg';
+  static const String iconMomo = '$_imagesPath/icon_momo.svg'; // Sửa tên
+  static const String iconZaloPay = '$_imagesPath/icon_zalopay.svg'; // Sửa tên
+  static const String iconSuccess = '$_imagesPath/icon_success.svg';
+  static const String iconError = '$_imagesPath/icon_error.svg';
+  static const String iconWarning = '$_imagesPath/icon_warning.svg';
+
   // --- ICON ĐIỀU HƯỚNG & FAB ---
   static const String fabBot = '$_imagesPath/fab_bot.svg';
   static const String navPlus = '$_imagesPath/nav_plus.svg';
@@ -302,12 +443,4 @@ class AppAssets {
   static const String navBot = '$_imagesPath/nav_bot.svg';
   static const String navFolder = '$_imagesPath/nav_folder.svg';
   static const String navUser = '$_imagesPath/nav_user.svg';
-
-   static const String iconWallet = '$_imagesPath/icon_wallet.svg';
-// ví
-   static const String iconCoin = '$_imagesPath/icon_coin.svg';
-   static const String iconmomo = '$_imagesPath/icon_momo.svg';
-   static const String iconZalo = '$_imagesPath/icon_zalopay.svg';
-  // Biến cũ không còn dùng (đã được thay bằng navPlus)
-  // static const String iconPlus = '$_imagesPath/icon_plus.svg';
 }

@@ -10,7 +10,7 @@ import '../config/app_theme.dart';
 
 class UploadService {
   // Lấy URL từ AppAssets
-  static const String _baseUrl = AppAssets.uploadApiBaseUrl;
+  static final String _baseUrl = AppAssets.uploadApiBaseUrl;
   final AuthService _authService = AuthService();
 
   Future<List<String>> uploadImages(List<File> imageFiles) async {

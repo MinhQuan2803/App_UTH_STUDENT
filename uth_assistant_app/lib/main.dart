@@ -72,6 +72,9 @@ class MyApp extends StatelessWidget {
               builder: (context) => PostDetailScreen(post: post),
             );
           }
+          // Nếu thiếu arguments, trả về null để fallback về routes mặc định
+          debugPrint("Error: /post_detail missing valid Post argument");
+          return null;
         }
 
         // Xử lý route cho Profile
@@ -92,11 +95,22 @@ class MyApp extends StatelessWidget {
               builder: (context) => UserPostsScreen(username: username),
             );
           }
+          // Nếu thiếu arguments, trả về null
+          debugPrint("Error: /user_posts missing valid username argument");
+          return null;
         }
 
-        // Quay về trang chủ nếu có lỗi route
-        print("Error: Invalid arguments or route name");
-        return MaterialPageRoute(builder: (context) => const MainScreen());
+        // Nếu không khớp route nào, trả về null để Flutter xử lý
+        return null;
+      },
+
+      onUnknownRoute: (settings) {
+        debugPrint("Unknown route: ${settings.name}");
+        // Fallback về splash hoặc home tùy trạng thái đăng nhập
+        return MaterialPageRoute(
+          builder: (context) =>
+              isLoggedIn ? const MainScreen() : const SplashScreen(),
+        );
       },
     );
   }

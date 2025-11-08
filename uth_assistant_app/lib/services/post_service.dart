@@ -4,11 +4,12 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 import 'api_client.dart'; // Import ApiClient
 import '../models/post_model.dart';
+import '../config/app_theme.dart';
 import 'dart:io'; // Import dart:io
 import 'dart:async'; // Import dart:async
 
 class PostService {
-  static const String _baseUrl = 'https://uthstudent.onrender.com/api/posts';
+  static final String _baseUrl = AppAssets.postApiBaseUrl;
   final AuthService _authService = AuthService();
   final ApiClient _apiClient = ApiClient(); // Sử dụng ApiClient
 

@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import '../config/app_theme.dart';
 
 class ProfileService {
-  static const String _baseUrl = 'https://uthstudent.onrender.com/api/users';
+  static final String _baseUrl = AppAssets.userApiBaseUrl;
   final AuthService _authService = AuthService();
 
   // Cache cho profile của mình

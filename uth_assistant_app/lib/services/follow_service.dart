@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../config/app_theme.dart';
 
 /// Service xử lý Follow/Unfollow users
 /// Dựa trên tài liệu API: follow-api-documentation.md
 class FollowService {
-  static const String baseUrl = 'https://uthstudent.onrender.com/api/users';
+  static final String baseUrl = AppAssets.userApiBaseUrl;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   /// Lấy token từ secure storage (phải khớp với key trong auth_service.dart)

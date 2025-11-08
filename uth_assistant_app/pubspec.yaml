@@ -16,6 +16,7 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   image_picker: ^1.0.7
   mime: ^1.0.5
+  intl: ^0.19.0
   
   # Đã xóa dòng http: ^1.1.0 bị trùng lặp
   http: ^1.2.1 

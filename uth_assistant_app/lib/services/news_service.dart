@@ -43,6 +43,7 @@ class NewsArticle {
 
 // Lớp Service để xử lý việc gọi API
 class NewsService {
+  // Sử dụng production URL cho news (vì render.com đã có endpoint này)
   static const String _baseUrl = 'https://uthstudent.onrender.com/api/uth';
 
   // Cache dữ liệu

@@ -5,9 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:uth_assistant_app/config/app_theme.dart';
 
 class AuthService {
-  static const String _baseUrl = 'https://uthstudent.onrender.com/api/auth';
+  static final String _baseUrl = AppAssets.authApiBaseUrl;
   final _storage = const FlutterSecureStorage();
 
   // THÊM KEY MỚI
@@ -95,9 +96,18 @@ class AuthService {
           }
         }
 
-        if (accessToken != null) {
-          // Decode token để lấy thông tin
-          Map<String, dynamic> decodedToken = JwtDecoder.decode(accessToken);
+        if (accessToken != null && accessToken is String) {
+          // Decode token để lấy thông tin với try-catch riêng
+          Map<String, dynamic> decodedToken;
+          try {
+            decodedToken = JwtDecoder.decode(accessToken);
+          } catch (decodeError) {
+            if (kDebugMode) print('✗ Token decode error: $decodeError');
+            return {
+              'success': false,
+              'message': 'Lỗi giải mã token: ${decodeError.toString()}'
+            };
+          }
 
           // Debug logs (chỉ hiển thị trong debug mode)
           if (kDebugMode) {
@@ -109,63 +119,72 @@ class AuthService {
           final String? userId = decodedToken['userId'];
           final String? username = decodedToken['username'];
 
-          // Lưu access token
-          await _storage.write(key: _tokenKey, value: accessToken);
+          // Lưu tokens và user info với try-catch
+          try {
+            // Lưu access token
+            await _storage.write(key: _tokenKey, value: accessToken);
 
-          // Lưu refresh token nếu có
-          if (refreshToken != null) {
-            await _storage.write(key: _refreshTokenKey, value: refreshToken);
-            if (kDebugMode) print('✓ Saved refresh token');
-          } else {
-            // Fallback: Nếu server không trả refreshToken riêng, dùng accessToken
-            // (Một số backend dùng cùng token cho refresh)
-            await _storage.write(key: _refreshTokenKey, value: accessToken);
-            if (kDebugMode)
-              print(
-                  '⚠ No separate refreshToken, using accessToken as fallback');
-          }
-
-          // Lưu userId nếu có
-          if (userId != null) {
-            await _storage.write(key: 'userId', value: userId);
-            if (kDebugMode) print('✓ Saved userId: $userId');
-          }
-
-          // Lưu username
-          if (username != null && username.isNotEmpty) {
-            // Trường hợp 1: Lấy được username từ token (BEST)
-            await _storage.write(key: _usernameKey, value: username);
-            if (kDebugMode) print('✓ Saved username from TOKEN: $username');
-          } else {
-            // Trường hợp 2: Fallback - Parse từ message (nếu token không có username)
-            if (kDebugMode)
-              print('⚠ Token không chứa username, thử parse từ message...');
-            if (message != null && message.contains('đăng nhập thành công')) {
-              try {
-                // Parse: "Bạn john_doe đăng nhập thành công" -> "john_doe"
-                final RegExp regex =
-                    RegExp(r'Bạn\s+(\S+)\s+đăng nhập thành công');
-                final match = regex.firstMatch(message);
-                if (match != null) {
-                  final parsedUsername = match.group(1);
-                  if (parsedUsername != null) {
-                    await _storage.write(
-                        key: _usernameKey, value: parsedUsername);
-                    if (kDebugMode)
-                      print('✓ Saved username from MESSAGE: $parsedUsername');
-                  }
-                } else {
-                  if (kDebugMode)
-                    print('✗ KHÔNG THỂ PARSE USERNAME từ message: $message');
-                }
-              } catch (e) {
-                if (kDebugMode) print('✗ LỖI khi parse username: $e');
-              }
+            // Lưu refresh token nếu có
+            if (refreshToken != null && refreshToken is String) {
+              await _storage.write(key: _refreshTokenKey, value: refreshToken);
+              if (kDebugMode) print('✓ Saved refresh token');
             } else {
+              // Fallback: Nếu server không trả refreshToken riêng, dùng accessToken
+              await _storage.write(key: _refreshTokenKey, value: accessToken);
               if (kDebugMode)
                 print(
-                    '✗ KHÔNG THỂ LẤY USERNAME (Token và Message đều không có)');
+                    '⚠ No separate refreshToken, using accessToken as fallback');
             }
+
+            // Lưu userId nếu có
+            if (userId != null && userId.isNotEmpty) {
+              await _storage.write(key: 'userId', value: userId);
+              if (kDebugMode) print('✓ Saved userId: $userId');
+            }
+
+            // Lưu username
+            if (username != null && username.isNotEmpty) {
+              // Trường hợp 1: Lấy được username từ token (BEST)
+              await _storage.write(key: _usernameKey, value: username);
+              if (kDebugMode) print('✓ Saved username from TOKEN: $username');
+            } else {
+              // Trường hợp 2: Fallback - Parse từ message (nếu token không có username)
+              if (kDebugMode)
+                print('⚠ Token không chứa username, thử parse từ message...');
+              if (message != null && message.contains('đăng nhập thành công')) {
+                try {
+                  // Parse: "Bạn john_doe đăng nhập thành công" -> "john_doe"
+                  final RegExp regex =
+                      RegExp(r'Bạn\s+(\S+)\s+đăng nhập thành công');
+                  final match = regex.firstMatch(message);
+                  if (match != null) {
+                    final parsedUsername = match.group(1);
+                    if (parsedUsername != null) {
+                      await _storage.write(
+                          key: _usernameKey, value: parsedUsername);
+                      if (kDebugMode)
+                        print('✓ Saved username from MESSAGE: $parsedUsername');
+                    }
+                  } else {
+                    if (kDebugMode)
+                      print('✗ KHÔNG THỂ PARSE USERNAME từ message: $message');
+                  }
+                } catch (e) {
+                  if (kDebugMode) print('✗ LỖI khi parse username: $e');
+                }
+              } else {
+                if (kDebugMode)
+                  print(
+                      '✗ KHÔNG THỂ LẤY USERNAME (Token và Message đều không có)');
+              }
+            }
+          } catch (storageError) {
+            if (kDebugMode) print('✗ Storage error: $storageError');
+            return {
+              'success': false,
+              'message':
+                  'Lỗi lưu thông tin đăng nhập: ${storageError.toString()}'
+            };
           }
 
           return {'success': true, 'message': message};
@@ -178,11 +197,29 @@ class AuthService {
       } else {
         return {'success': false, 'message': message};
       }
+    } on TimeoutException {
+      if (kDebugMode) print('Signin Timeout');
+      return {
+        'success': false,
+        'message': 'Máy chủ phản hồi quá chậm. Vui lòng thử lại.'
+      };
+    } on SocketException {
+      if (kDebugMode) print('Signin Socket Error');
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối mạng. Kiểm tra Internet của bạn.'
+      };
+    } on FormatException catch (e) {
+      if (kDebugMode) print('Signin Format Error: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi dữ liệu từ server. Vui lòng thử lại sau.'
+      };
     } catch (e) {
       if (kDebugMode) print('Signin Error: $e');
       return {
         'success': false,
-        'message': 'Lỗi kết nối hoặc giải mã token: ${e.toString()}'
+        'message': 'Đăng nhập thất bại: ${e.toString()}'
       };
     }
   }

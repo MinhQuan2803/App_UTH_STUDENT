@@ -35,7 +35,17 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            
+            // Shrink resources để tối ưu size (optional)
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
+    }
+    
+    // Hỗ trợ các image format hiện đại
+    aaptOptions {
+        noCompress("tflite")
+        noCompress("lite")
     }
 }
 

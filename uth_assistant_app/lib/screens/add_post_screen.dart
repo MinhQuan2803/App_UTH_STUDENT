@@ -698,12 +698,41 @@ class _ImagePreviewSection extends StatelessWidget {
         width: double.infinity,
         // QUAN TRỌNG: Chỉ set height khi có aspectRatio
         height: aspectRatio != null ? double.infinity : null,
-        errorBuilder: (context, error, stackTrace) => Container(
-          height: aspectRatio != null ? double.infinity : 200,
-          color: AppColors.imagePlaceholder,
-          child: const Icon(Icons.broken_image,
-              color: AppColors.subtitle, size: 32),
-        ),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: aspectRatio != null ? double.infinity : 200,
+            color: AppColors.imagePlaceholder,
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          if (kDebugMode) {
+            print('Image load error: $error');
+            print('URL: $url');
+          }
+          return Container(
+            height: aspectRatio != null ? double.infinity : 200,
+            color: AppColors.imagePlaceholder,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.broken_image,
+                    color: AppColors.subtitle, size: 32),
+                SizedBox(height: 8),
+                Text('Không tải được ảnh',
+                    style: TextStyle(color: AppColors.subtitle, fontSize: 12)),
+              ],
+            ),
+          );
+        },
       );
       onRemove = () => onRemoveUrl(index);
     } else {
@@ -1042,17 +1071,61 @@ class _ImageViewerScreenState extends State<_ImageViewerScreen> {
                   ? Image.network(
                       image,
                       fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                            color: Colors.white,
+                          ),
+                        );
+                      },
                       errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.broken_image,
-                          color: Colors.white,
-                          size: 64,
+                        if (kDebugMode) {
+                          print('Image viewer load error: $error');
+                          print('URL: $image');
+                        }
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Icons.broken_image,
+                              color: Colors.white,
+                              size: 64,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Không tải được ảnh',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
                         );
                       },
                     )
                   : Image.file(
                       image as File,
                       fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        if (kDebugMode) print('File image error: $error');
+                        return const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.broken_image,
+                              color: Colors.white,
+                              size: 64,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Không đọc được file ảnh',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        );
+                      },
                     ),
             ),
           );

@@ -6,11 +6,13 @@ import '../widgets/modern_app_bar.dart';
 class WebViewScreen extends StatefulWidget {
   final String initialUrl;
   final String? title; // Tiêu đề tùy chọn cho AppBar
+  final bool isPayment; // Đánh dấu đây là màn hình thanh toán
 
   const WebViewScreen({
     super.key,
     required this.initialUrl,
     this.title,
+    this.isPayment = false,
   });
 
   @override
@@ -20,6 +22,7 @@ class WebViewScreen extends StatefulWidget {
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  bool _isClosed = false; // Flag để tránh đóng nhiều lần
 
   @override
   void initState() {
@@ -35,27 +38,71 @@ class _WebViewScreenState extends State<WebViewScreen> {
             // print('WebView is loading (progress : $progress%)');
           },
           onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-            });
+            print('📍 WebView loading: $url');
+
+            // Kiểm tra nếu là màn hình thanh toán và URL chứa returnUrl của VNPay
+            // Sử dụng danh sách keywords từ AppAssets
+            if (widget.isPayment &&
+                !_isClosed &&
+                AppAssets.paymentReturnUrlKeywords
+                    .any((keyword) => url.contains(keyword))) {
+              print('🔙 Payment return URL detected, closing WebView...');
+              _isClosed = true;
+
+              // Delay nhỏ để tránh crash - sử dụng constant từ AppAssets
+              Future.delayed(
+                  Duration(milliseconds: AppAssets.webViewCloseDelayMs), () {
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+              });
+              return; // Dừng xử lý, không set loading
+            }
+
+            if (!_isClosed) {
+              setState(() {
+                _isLoading = true;
+              });
+            }
           },
           onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-            });
+            if (!_isClosed) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
           },
           onWebResourceError: (WebResourceError error) {
             print('WebView error: ${error.description}');
             // Có thể hiển thị thông báo lỗi
-            setState(() {
-              _isLoading = false; // Dừng loading khi có lỗi
-            });
+            if (!_isClosed) {
+              setState(() {
+                _isLoading = false; // Dừng loading khi có lỗi
+              });
+            }
           },
           onNavigationRequest: (NavigationRequest request) {
-            // Ngăn chặn điều hướng đến các link không mong muốn nếu cần
-            // if (request.url.startsWith('https://www.youtube.com/')) {
-            //   return NavigationDecision.prevent;
-            // }
+            print('🔍 Navigation request: ${request.url}');
+
+            // Nếu là màn hình thanh toán và URL chứa returnUrl
+            // Sử dụng danh sách keywords từ AppAssets
+            if (widget.isPayment &&
+                !_isClosed &&
+                AppAssets.paymentReturnUrlKeywords
+                    .any((keyword) => request.url.contains(keyword))) {
+              print('🛑 Preventing navigation to return URL');
+              _isClosed = true;
+
+              // Đóng WebView với delay để tránh crash - sử dụng constant từ AppAssets
+              Future.delayed(
+                  Duration(milliseconds: AppAssets.webViewCloseDelayMs), () {
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+              });
+
+              return NavigationDecision.prevent;
+            }
             return NavigationDecision.navigate;
           },
         ),
