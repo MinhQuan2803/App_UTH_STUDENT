@@ -10,6 +10,7 @@ import '../services/profile_service.dart';
 import '../services/follow_service.dart';
 import '../services/post_service.dart';
 import '../services/relationship_service.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? username;
@@ -392,9 +393,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: isOwner
                 ? CustomButton(
                     text: 'Chỉnh sửa hồ sơ',
-                    onPressed: () {
-                      CustomNotification.info(
-                          context, 'Tính năng đang phát triển');
+                    onPressed: () async {
+                      // Điều hướng đến màn hình chỉnh sửa
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditProfileScreen(
+                            currentUser: user,
+                          ),
+                        ),
+                      );
+                      
+                      // Nếu có thay đổi, reload profile
+                      if (result == true) {
+                        await _loadAllData(forceRefresh: true);
+                      }
                     },
                     isPrimary: false,
                   )

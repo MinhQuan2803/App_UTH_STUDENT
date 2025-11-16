@@ -22,7 +22,7 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   final TextEditingController _pointsController = TextEditingController();
-  String _selectedMethod = 'momo';
+  String _selectedMethod = 'vnpay'; // Mặc định VNPay
   String? _selectedPackage; // Nullable để cho phép nhập tùy chỉnh
   bool _isLoading = false;
   bool _isLoadingBalance = true; // Trạng thái loading số dư
@@ -39,6 +39,9 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Timer? _pollingTimer;
   int _pollingAttempts = 0;
+  bool _isPollingActive = false; // Flag để track polling state
+  bool _isCheckingStatus =
+      false; // Flag để tránh race condition khi check status
 
   @override
   void initState() {
@@ -96,6 +99,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   void dispose() {
+    _isPollingActive = false; // Đánh dấu polling không còn active
     _pollingTimer?.cancel(); // Hủy timer khi dispose
     _pointsController.removeListener(_onPointsChanged);
     _pointsController.dispose();
@@ -130,46 +134,51 @@ class _WalletScreenState extends State<WalletScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final String orderInfo = 'Nạp ${_pointsController.text} điểm UTH Student';
+      // Xác định provider dựa trên method được chọn
+      String provider = 'VNPAY'; // Mặc định
+      if (_selectedMethod == 'momo') {
+        provider = 'MOMO';
+      } else if (_selectedMethod == 'vnpay') {
+        provider = 'VNPAY';
+      }
 
-      // Tạo payment URL và lấy vnp_TxnRef
       final paymentData = await _paymentService.createPaymentUrl(
         amount: _calculatedAmount,
-        orderInfo: orderInfo,
+        provider: provider,
       );
 
       final String paymentUrl = paymentData['paymentUrl'];
-      final String? vnpTxnRef = paymentData['vnpTxnRef'];
+      final String? orderId = paymentData['orderId'];
 
       if (kDebugMode) {
-        print('💰 Payment URL received');
-        print('🆔 VNP TxnRef from API: $vnpTxnRef');
+        print('💰 Payment URL received ($provider)');
+        print('🆔 Order ID from API: $orderId');
       }
 
       if (mounted) {
         setState(() => _isLoading = false);
 
-        // Mở VNPay payment trong WebView
+        // *** TỐI ƯU UX: BẮT ĐẦU POLLING TRƯỚC KHI MỞ WEBVIEW ***
+        if (orderId != null && orderId.isNotEmpty) {
+          if (kDebugMode)
+            print('▶️ Starting polling IN BACKGROUND for: $orderId');
+          _startPaymentPolling(orderId); // Bắt đầu chạy ngầm
+        } else {
+          if (kDebugMode)
+            print('⚠️ Order ID is null or empty, polling skipped');
+        }
+
+        // Mở payment trong WebView (KHÔNG AWAIT - polling đã chạy ngầm)
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => WebViewScreen(
               initialUrl: paymentUrl,
-              title: 'Thanh toán VNPay',
+              title: 'Thanh toán $provider',
               isPayment: true, // Đánh dấu đây là màn hình thanh toán
             ),
           ),
         );
-
-        // Nếu có vnp_TxnRef, bắt đầu polling để kiểm tra trạng thái
-        if (vnpTxnRef != null && vnpTxnRef.isNotEmpty) {
-          if (kDebugMode)
-            print('▶️ Calling _startPaymentPolling with: $vnpTxnRef');
-          _startPaymentPolling(vnpTxnRef);
-        } else {
-          if (kDebugMode)
-            print('⚠️ VNP TxnRef is null or empty, polling skipped');
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -182,45 +191,74 @@ class _WalletScreenState extends State<WalletScreen> {
     }
   }
 
-  void _startPaymentPolling(String vnpTxnRef) {
+  void _startPaymentPolling(String orderId) {
     _pollingAttempts = 0;
+    _isPollingActive = true; // Đánh dấu polling đang active
+    _isCheckingStatus = false; // Reset cờ khi bắt đầu
 
-    if (kDebugMode) print('🔄 Starting payment polling for txnRef: $vnpTxnRef');
+    if (kDebugMode) print('🔄 Starting payment polling for orderId: $orderId');
 
     // Hủy timer cũ nếu có
     _pollingTimer?.cancel();
 
-    // Hiển thị dialog đang chờ thanh toán
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => PaymentWaitingDialog(
-        onCancel: () {
-          _pollingTimer?.cancel();
-          Navigator.pop(context);
-        },
-      ),
+    // Hiển thị dialog đang chờ thanh toán bằng showAppDialog
+    showAppDialog(
+      context,
+      type: DialogType.info,
+      title: 'Đang xử lý thanh toán',
+      message:
+          'Vui lòng đợi trong giây lát...\nHệ thống đang xác nhận giao dịch của bạn.',
     );
 
     // Bắt đầu polling - sử dụng constant từ AppAssets
     _pollingTimer = Timer.periodic(
         Duration(seconds: AppAssets.pollingIntervalSeconds), (timer) async {
+      // 1. KIỂM TRA nếu polling đã bị hủy, bỏ qua callback này
+      if (!_isPollingActive) {
+        if (kDebugMode) print('⏹️ Polling stopped, ignoring callback');
+        timer.cancel();
+        return;
+      }
+
+      // 2. *** FIX RACE CONDITION: KHÓA LẠI NẾU ĐANG CHECK ***
+      if (_isCheckingStatus) {
+        if (kDebugMode)
+          print('🔒 Đang chờ kết quả check trước, bỏ qua lượt này...');
+        return;
+      }
+
+      // 3. Đặt cờ khóa
+      _isCheckingStatus = true;
       _pollingAttempts++;
 
       if (kDebugMode)
         print(
-            '🔍 Polling attempt $_pollingAttempts/${AppAssets.maxPollingAttempts} for txnRef: $vnpTxnRef');
+            '🔍 Polling attempt $_pollingAttempts/${AppAssets.maxPollingAttempts} for orderId: $orderId');
 
       try {
-        final statusData = await _paymentService.checkOrderStatus(vnpTxnRef);
+        final statusData = await _paymentService.checkOrderStatus(orderId);
         final String status = statusData['status'] ?? 'PENDING';
+
+        // KIỂM TRA LẠI: Vì có thể trong lúc await, polling đã bị hủy
+        if (!_isPollingActive) {
+          if (kDebugMode)
+            print('⏹️ Polling stopped while awaiting, ignoring result');
+          return; // finally sẽ mở khóa
+        }
 
         if (kDebugMode) print('📊 Order status: $status');
 
-        if (status == 'SUCCESS') {
+        // Chấp nhận cả SUCCESS và COMPLETED
+        if (status == 'SUCCESS' || status == 'COMPLETED') {
           // Thanh toán thành công
-          if (kDebugMode) print('✅ Payment SUCCESS detected!');
+          if (kDebugMode) print('✅ Payment SUCCESS/COMPLETED detected!');
+
+          // HỦY TIMER NGAY để tránh xử lý trùng lặp
+          _isPollingActive = false; // Set flag trước khi cancel
           timer.cancel();
+          _pollingTimer?.cancel();
+          _pollingTimer = null;
+
           if (mounted) {
             if (kDebugMode) print('🔔 Closing waiting dialog...');
             Navigator.pop(context); // Đóng dialog chờ
@@ -242,9 +280,18 @@ class _WalletScreenState extends State<WalletScreen> {
               message: AppAssets.paymentSuccessMessage,
             );
           }
-        } else if (status == 'FAILED' || status == 'CANCELLED') {
+        } else if (status == 'FAILED' ||
+            status == 'CANCELLED' ||
+            status == 'EXPIRED') {
           // Thanh toán thất bại
+          if (kDebugMode) print('❌ Payment FAILED/CANCELLED/EXPIRED!');
+
+          // HỦY TIMER NGAY
+          _isPollingActive = false; // Set flag trước khi cancel
           timer.cancel();
+          _pollingTimer?.cancel();
+          _pollingTimer = null;
+
           if (mounted) {
             Navigator.pop(context); // Đóng dialog chờ
 
@@ -261,7 +308,12 @@ class _WalletScreenState extends State<WalletScreen> {
           }
         } else if (_pollingAttempts >= AppAssets.maxPollingAttempts) {
           // Timeout sau 3 phút
+          if (kDebugMode) print('⏱️ Payment polling timeout!');
+
+          _isPollingActive = false; // Set flag trước khi cancel
           timer.cancel();
+          _pollingTimer?.cancel();
+          _pollingTimer = null;
           if (mounted) {
             Navigator.pop(context); // Đóng dialog chờ
 
@@ -283,6 +335,7 @@ class _WalletScreenState extends State<WalletScreen> {
         if (kDebugMode) print('❌ Polling error: $e');
 
         if (_pollingAttempts >= AppAssets.maxPollingAttempts) {
+          _isPollingActive = false; // Set flag trước khi cancel
           timer.cancel();
           if (mounted) {
             Navigator.pop(context);
@@ -293,6 +346,15 @@ class _WalletScreenState extends State<WalletScreen> {
               message: AppAssets.checkStatusErrorMessage,
             );
           }
+          // Hủy reference
+          _pollingTimer?.cancel();
+          _pollingTimer = null;
+        }
+      } finally {
+        // 4. *** MỞ KHÓA sau khi xử lý xong ***
+        // (Nếu polling chưa bị dừng, mở khóa để lần sau check tiếp)
+        if (_isPollingActive) {
+          _isCheckingStatus = false;
         }
       }
     });
@@ -448,9 +510,9 @@ class _WalletScreenState extends State<WalletScreen> {
         const SizedBox(height: 6),
         PaymentMethodOption(
           logoAsset: AppAssets.iconZaloPay,
-          title: 'ZaloPay',
-          isSelected: _selectedMethod == 'zalopay',
-          onTap: () => setState(() => _selectedMethod = 'zalopay'),
+          title: 'VNPay',
+          isSelected: _selectedMethod == 'vnpay',
+          onTap: () => setState(() => _selectedMethod = 'vnpay'),
         ),
       ],
     );

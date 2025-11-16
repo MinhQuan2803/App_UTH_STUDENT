@@ -167,6 +167,33 @@ class PostService {
     }
   }
 
+  /// Lấy chi tiết 1 bài viết theo ID
+  /// GET /api/posts/:postId
+  Future<Post> getPostById(String postId) async {
+    if (kDebugMode) print('=== GET POST BY ID: $postId ===');
+
+    final headers = await _getAuthHeaders();
+    final uri = Uri.parse('$_baseUrl/$postId');
+
+    try {
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 20));
+
+      final dynamic data = _processResponse(response);
+
+      // Backend có thể trả về { post: {...} } hoặc trực tiếp post object
+      final postJson =
+          data is Map && data.containsKey('post') ? data['post'] : data;
+      final post = Post.fromJson(postJson);
+
+      if (kDebugMode) print('✓ Loaded post: ${post.id}');
+      return post;
+    } catch (e) {
+      throw _handleNetworkError(e);
+    }
+  }
+
   /// Xóa cache
   static void clearCache() {
     _cachedPosts = null;

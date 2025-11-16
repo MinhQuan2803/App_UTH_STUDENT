@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
 import 'auth_service.dart';
 import '../config/app_theme.dart';
 
@@ -136,6 +138,184 @@ class ProfileService {
       throw Exception('401: Phiên đăng nhập không hợp lệ');
     } else {
       throw Exception('Lỗi Server: ${response.statusCode}');
+    }
+  }
+
+  /// Cập nhật thông tin profile (username, bio)
+  /// PATCH /api/users/me/update
+  Future<Map<String, dynamic>> updateProfileDetails({
+    required String username,
+    String? bio,
+  }) async {
+    final String? token = await _authService.getToken();
+
+    if (token == null) {
+      throw Exception('401: Chưa đăng nhập');
+    }
+
+    if (kDebugMode) {
+      print('=== UPDATE PROFILE DETAILS ===');
+      print('Username: $username');
+      print('Bio: ${bio ?? "(unchanged)"}');
+    }
+
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    final body = jsonEncode({
+      'username': username,
+      if (bio != null) 'bio': bio,
+    });
+
+    final response = await http
+        .patch(
+          Uri.parse('$_baseUrl/me/update'),
+          headers: headers,
+          body: body,
+        )
+        .timeout(const Duration(seconds: 20));
+
+    if (kDebugMode) print('Response status: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      final updatedUser = responseData['user'];
+
+      // Cập nhật cache với user object
+      _cachedMyProfile = Map<String, dynamic>.from(updatedUser);
+      _cachedMyProfile!['isOwner'] = true;
+      _cachedMyProfile!['isFollowing'] = false;
+      _myProfileLastFetchTime = DateTime.now();
+
+      if (kDebugMode) {
+        print('✓ Profile updated successfully');
+        print('Message: ${responseData['message']}');
+        print('Updated username: ${updatedUser['username']}');
+      }
+
+      return responseData;
+    } else if (response.statusCode == 400) {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? 'Dữ liệu không hợp lệ');
+    } else if (response.statusCode == 409) {
+      throw Exception('Username này đã được sử dụng');
+    } else if (response.statusCode == 404) {
+      throw Exception('Không tìm thấy người dùng');
+    } else if (response.statusCode == 401) {
+      throw Exception('401: Phiên đăng nhập không hợp lệ');
+    } else {
+      throw Exception('Lỗi Server: ${response.statusCode}');
+    }
+  }
+
+  /// Cập nhật avatar
+  /// PATCH /api/users/me/avatar
+  Future<Map<String, dynamic>> updateAvatar(
+    String imagePath, // Đổi từ imageBytes sang imagePath (giống upload_service)
+  ) async {
+    final String? token = await _authService.getToken();
+
+    if (token == null) {
+      throw Exception('401: Chưa đăng nhập');
+    }
+
+    if (kDebugMode) {
+      print('=== UPDATE AVATAR ===');
+      print('Base URL: $_baseUrl');
+      print('Full URL: $_baseUrl/me/avatar');
+      print('Image path: $imagePath');
+    }
+
+    final uri = Uri.parse('$_baseUrl/me/avatar');
+    final request = http.MultipartRequest('PATCH', uri);
+
+    // Thêm header Authorization
+    request.headers['Authorization'] = 'Bearer $token';
+
+    if (kDebugMode) {
+      print('Request headers: ${request.headers}');
+      print('Request method: ${request.method}');
+    }
+
+    // Thêm file avatar - SỬ DỤNG fromPath GIỐNG UPLOAD_SERVICE
+    final fileName = imagePath.split('/').last;
+
+    // Detect MIME type từ file extension (giống upload_service)
+    final mimeType = lookupMimeType(imagePath) ?? 'image/jpeg';
+    final mimeTypeParts = mimeType.split('/');
+
+    final file = await http.MultipartFile.fromPath(
+      'avatar', // Field name phải khớp với backend (multer.single('avatar'))
+      imagePath,
+      filename: fileName,
+      contentType: MediaType(mimeTypeParts[0], mimeTypeParts[1]), // image/jpeg
+    );
+
+    request.files.add(file);
+
+    if (kDebugMode) {
+      print('Request files: ${request.files.length} file(s)');
+      print('File field name: avatar');
+      print('Filename: $fileName');
+      print('Content-Type: ${file.contentType}');
+    }
+
+    final streamedResponse =
+        await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (kDebugMode) {
+      print('Response status: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+      print('Response body: ${response.body}');
+    }
+
+    if (response.statusCode == 200) {
+      try {
+        final responseData = jsonDecode(response.body);
+        final newAvatarUrl = responseData['avatarUrl'];
+
+        // Cập nhật cache
+        if (_cachedMyProfile != null) {
+          _cachedMyProfile!['avatarUrl'] = newAvatarUrl;
+          _myProfileLastFetchTime = DateTime.now();
+        }
+
+        if (kDebugMode) {
+          print('✓ Avatar updated successfully');
+          print('Message: ${responseData['message']}');
+          print('New avatar URL: $newAvatarUrl');
+        }
+
+        return responseData;
+      } catch (e) {
+        if (kDebugMode) print('Error parsing JSON: $e');
+        throw Exception('Server trả về dữ liệu không hợp lệ');
+      }
+    } else if (response.statusCode == 400) {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? 'File không hợp lệ');
+    } else if (response.statusCode == 401) {
+      throw Exception('401: Phiên đăng nhập không hợp lệ');
+    } else {
+      // Server error (500, 502, etc.) hoặc HTML response
+      if (kDebugMode) {
+        print('❌ Server error ${response.statusCode}');
+        print('Response might be HTML or invalid JSON');
+      }
+
+      // Thử parse JSON, nếu không được thì dùng message mặc định
+      try {
+        final errorData = jsonDecode(response.body);
+        throw Exception(
+            errorData['message'] ?? 'Lỗi máy chủ khi upload avatar.');
+      } catch (e) {
+        // Response không phải JSON (có thể là HTML error page)
+        throw Exception(
+            'Lỗi server (${response.statusCode}): Không thể upload avatar. Vui lòng kiểm tra backend.');
+      }
     }
   }
 

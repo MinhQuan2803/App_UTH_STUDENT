@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "261850267861",
+    "project_id": "uth-student-a6cd5",
+    "storage_bucket": "uth-student-a6cd5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:261850267861:android:d9c1735e4ff7347b04625c",
+        "android_client_info": {
+          "package_name": "com.example.uth_assistant_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBezjDrlGBiINtepUKObFjG9CKvNUpcw3s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

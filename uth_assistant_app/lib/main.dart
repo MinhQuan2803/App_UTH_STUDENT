@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
 import 'config/app_theme.dart';
 
 // Imports các màn hình
@@ -17,9 +20,33 @@ import 'screens/upload_ducument_screen.dart'; // Import màn hình upload docume
 
 // Import service
 import 'services/auth_service.dart';
+import 'services/fcm_service.dart';
+
+// Global navigator key để navigate từ FCM service
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+/// Background message handler (PHẢI ở top-level)
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  print('=== BACKGROUND MESSAGE ===');
+  print('Title: ${message.notification?.title}');
+  print('Body: ${message.notification?.body}');
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Khởi tạo Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Đăng ký background message handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Khởi tạo FCM Service
+  await FCMService.initialize();
 
   // Kiểm tra token hợp lệ (bao gồm cả kiểm tra expiration)
   final authService = AuthService();
@@ -36,6 +63,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // Thêm global key
       title: 'UTH Student',
       debugShowCheckedModeBanner: false,
 

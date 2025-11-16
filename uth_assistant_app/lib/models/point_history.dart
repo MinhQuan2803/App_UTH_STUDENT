@@ -61,19 +61,19 @@ class PointHistoryResponse {
   });
 
   factory PointHistoryResponse.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] ?? {};
-    final historyList = (data['history'] as List?)
+    // API trả về: { "data": [...], "pagination": {...} }
+    final historyList = (json['data'] as List?)
             ?.map((item) => PointHistory.fromJson(item))
             .toList() ??
         [];
-    final pagination = data['pagination'] ?? {};
+    final pagination = json['pagination'] ?? {};
 
     return PointHistoryResponse(
-      success: json['success'] ?? false,
+      success: true, // API không trả success field, mặc định true
       history: historyList,
       currentPage: pagination['currentPage'] ?? 1,
       totalPages: pagination['totalPages'] ?? 1,
-      totalRecords: pagination['totalRecords'] ?? 0,
+      totalRecords: pagination['totalItems'] ?? 0, // API dùng totalItems
       limit: pagination['limit'] ?? 20,
     );
   }

@@ -144,4 +144,3 @@ class DocumentListItem extends StatelessWidget {
     }
   }
 }
-

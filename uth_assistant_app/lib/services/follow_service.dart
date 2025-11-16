@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../config/app_theme.dart';
 
 /// Service xử lý Follow/Unfollow users
 /// Dựa trên tài liệu API: follow-api-documentation.md
 class FollowService {
-  static final String baseUrl = AppAssets.userApiBaseUrl;
+  static final String baseUrl =
+      'http://192.168.1.14:5000/api/follow'; // Follow router riêng
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   /// Lấy token từ secure storage (phải khớp với key trong auth_service.dart)
@@ -59,6 +59,12 @@ class FollowService {
       }
 
       final url = Uri.parse('$baseUrl/$userId/follow');
+
+      print('=== FOLLOW USER DEBUG ===');
+      print('Base URL: $baseUrl');
+      print('User ID: $userId');
+      print('Full URL: ${url.toString()}');
+
       final response = await http.post(
         url,
         headers: {
@@ -68,6 +74,9 @@ class FollowService {
         },
         body: json.encode({}),
       );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -98,7 +107,7 @@ class FollowService {
   }
 
   /// Bỏ theo dõi một user
-  /// DELETE /api/users/:userId/follow
+  /// DELETE /api/users/:userId/unfollow
   Future<FollowResult> unfollowUser(String userId) async {
     try {
       final token = await _getToken();
@@ -106,7 +115,10 @@ class FollowService {
         throw Exception('Chưa đăng nhập');
       }
 
-      final url = Uri.parse('$baseUrl/$userId/follow');
+      print('=== UNFOLLOW USER DEBUG ===');
+      print('User ID: $userId');
+
+      final url = Uri.parse('$baseUrl/$userId/unfollow');
       final response = await http.delete(
         url,
         headers: {
@@ -115,6 +127,9 @@ class FollowService {
           'Cookie': 'token=$token',
         },
       );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

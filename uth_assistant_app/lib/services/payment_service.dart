@@ -8,7 +8,7 @@ import 'dart:async';
 
 class PaymentService {
   static final String _baseUrl = AppAssets.paymentApiBaseUrl;
-  static final String _userBaseUrl = AppAssets.userApiBaseUrl;
+  static final String _pointsBaseUrl = AppAssets.pointsApiBaseUrl;
   final AuthService _authService = AuthService();
 
   // --- Helper Functions (Tái sử dụng) ---
@@ -48,25 +48,26 @@ class PaymentService {
 
   // --- API Function for Payment ---
 
-  /// Tạo link thanh toán VNPAY
-  /// POST /api/payment/vnpay/create-payment-link
+  /// Tạo link thanh toán (VNPAY hoặc MOMO)
+  /// POST /api/payment/create-payment
+  /// Body: { "amountVND": 100000, "provider": "VNPAY" | "MOMO" }
   /// Trả về Map với paymentUrl và orderId để tracking
   Future<Map<String, dynamic>> createPaymentUrl({
     required int amount,
-    required String orderInfo,
+    required String provider, // "VNPAY" hoặc "MOMO"
   }) async {
-    if (kDebugMode) print('=== CREATE VNPAY PAYMENT LINK ===');
+    if (kDebugMode) print('=== CREATE PAYMENT LINK ($provider) ===');
 
     final headers = await _getAuthHeaders(requireToken: true); // Yêu cầu token
     final body = jsonEncode({
-      'amount': amount,
-      'orderInfo': orderInfo,
+      'amountVND': amount,
+      'provider': provider,
     });
 
     try {
       final response = await http
           .post(
-            Uri.parse('$_baseUrl/vnpay/create-payment-link'),
+            Uri.parse('$_baseUrl/create-payment'),
             headers: headers,
             body: body,
           )
@@ -74,21 +75,21 @@ class PaymentService {
 
       final data = _processResponse(response);
 
-      // Lấy paymentUrl và vnp_TxnRef từ JSON trả về
+      // Lấy paymentUrl và orderId từ JSON trả về
       final String? paymentUrl = data['paymentUrl'];
-      final String? vnpTxnRef = data['vnp_TxnRef'];
+      final String? orderId = data['orderId'];
 
-      if (paymentUrl != null) {
+      if (paymentUrl != null && orderId != null) {
         if (kDebugMode) {
           print('✓ Payment URL received: $paymentUrl');
-          print('✓ VNP TxnRef: $vnpTxnRef');
+          print('✓ Order ID: $orderId');
         }
         return {
           'paymentUrl': paymentUrl,
-          'vnpTxnRef': vnpTxnRef,
+          'orderId': orderId,
         };
       } else {
-        throw Exception('Phản hồi không chứa paymentUrl');
+        throw Exception('Phản hồi không chứa paymentUrl hoặc orderId');
       }
     } catch (e) {
       throw _handleNetworkError(e);
@@ -96,26 +97,25 @@ class PaymentService {
   }
 
   /// Kiểm tra trạng thái đơn hàng
-  /// GET /api/payment/vnpay/order-status/:orderId
-  Future<Map<String, dynamic>> checkOrderStatus(String vnpTxnRef) async {
-    if (kDebugMode) print('=== CHECK ORDER STATUS: $vnpTxnRef ===');
+  /// GET /api/payment/payment-history/:orderId
+  Future<Map<String, dynamic>> checkOrderStatus(String orderId) async {
+    if (kDebugMode) print('=== CHECK ORDER STATUS: $orderId ===');
 
     final headers = await _getAuthHeaders(requireToken: true);
 
     try {
       final response = await http
           .get(
-            Uri.parse('$_baseUrl/vnpay/order-status/$vnpTxnRef'),
+            Uri.parse('$_baseUrl/payment-history/$orderId'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 10));
 
       final responseData = _processResponse(response);
 
-      // Parse status từ data object
-      final String status = responseData['data']?['status'] ??
-          responseData['status'] ??
-          'PENDING';
+      // API trả về: { "message": "...", "data": { "orderId": "...", "status": "COMPLETED", ... } }
+      final data = responseData['data'] ?? {};
+      final String status = data['status'] ?? 'PENDING';
 
       if (kDebugMode) {
         print('✓ Order Status: $status');
@@ -123,9 +123,9 @@ class PaymentService {
 
       // Trả về format chuẩn
       return {
-        'success': responseData['success'] ?? true,
+        'success': true,
         'status': status,
-        'data': responseData['data'],
+        'data': data,
       };
     } catch (e) {
       throw _handleNetworkError(e);
@@ -133,7 +133,7 @@ class PaymentService {
   }
 
   /// Lấy thông tin điểm của user hiện tại
-  /// GET /api/users/me/points
+  /// GET /api/points/balance
   Future<Map<String, dynamic>> getUserPoints() async {
     if (kDebugMode) print('=== GET USER POINTS ===');
 
@@ -142,26 +142,22 @@ class PaymentService {
     try {
       final response = await http
           .get(
-            Uri.parse('$_userBaseUrl/me/points'),
+            Uri.parse('$_pointsBaseUrl/balance'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 10));
 
       final data = _processResponse(response);
 
-      if (data['success'] == true && data['data'] != null) {
-        final pointsData = data['data'];
-        final int balance = pointsData['balance'] ?? 0;
-        final int level = pointsData['level'] ?? 0;
-        final int totalEarned = pointsData['totalEarned'] ?? 0;
-        final int totalSpent = pointsData['totalSpent'] ?? 0;
+      // API trả về trực tiếp: { "success": true, "balance": 1460, "level": 0 }
+      if (data['success'] == true) {
+        final int balance = data['balance'] ?? 0;
+        final int level = data['level'] ?? 0;
+        final int totalEarned = data['totalEarned'] ?? 0;
+        final int totalSpent = data['totalSpent'] ?? 0;
 
         if (kDebugMode) {
-          print('✓ User Points loaded');
-          print('Balance: $balance điểm');
-          print('Level: $level');
-          print('Total Earned: $totalEarned');
-          print('Total Spent: $totalSpent');
+          print('✓ User Points: $balance điểm (Level $level)');
         }
 
         return {
@@ -170,7 +166,7 @@ class PaymentService {
           'level': level,
           'totalEarned': totalEarned,
           'totalSpent': totalSpent,
-          'lastUpdated': pointsData['lastUpdated'],
+          'lastUpdated': data['lastUpdated'],
         };
       } else {
         throw Exception('Không thể lấy thông tin điểm');
@@ -181,7 +177,7 @@ class PaymentService {
   }
 
   /// Lấy lịch sử điểm của user
-  /// GET /api/users/me/points/history?page=1&limit=20
+  /// GET /api/points/history?page=1&limit=20
   Future<Map<String, dynamic>> getPointsHistory({
     int page = 1,
     int limit = 20,
@@ -193,8 +189,7 @@ class PaymentService {
     try {
       final response = await http
           .get(
-            Uri.parse(
-                '$_userBaseUrl/me/points/history?page=$page&limit=$limit'),
+            Uri.parse('$_pointsBaseUrl/history?page=$page&limit=$limit'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 10));
@@ -202,8 +197,7 @@ class PaymentService {
       final data = _processResponse(response);
 
       if (kDebugMode) {
-        print(
-            '✓ Points History loaded: ${data['data']?['history']?.length ?? 0} records');
+        print('✓ Points History loaded: ${data['data']?.length ?? 0} records');
       }
 
       return data;
@@ -212,20 +206,20 @@ class PaymentService {
     }
   }
 
-  /// Lấy lịch sử đơn hàng thanh toán VNPAY của user
-  /// GET /api/payment/vnpay/my-orders?page=1&limit=10
+  /// Lấy lịch sử đơn hàng thanh toán của user
+  /// GET /api/payment/payment-history?page=1&limit=10
   Future<Map<String, dynamic>> getMyOrders({
     int page = 1,
     int limit = 10,
   }) async {
-    if (kDebugMode) print('=== GET MY ORDERS (Page: $page) ===');
+    if (kDebugMode) print('=== GET PAYMENT HISTORY (Page: $page) ===');
 
     final headers = await _getAuthHeaders(requireToken: true);
 
     try {
       final response = await http
           .get(
-            Uri.parse('$_baseUrl/vnpay/my-orders?page=$page&limit=$limit'),
+            Uri.parse('$_baseUrl/payment-history?page=$page&limit=$limit'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 10));
@@ -234,7 +228,7 @@ class PaymentService {
 
       if (kDebugMode) {
         print(
-            '✓ Orders loaded: ${data['data']?['orders']?.length ?? 0} records');
+            '✓ Payment History loaded: ${data['data']?['orders']?.length ?? 0} orders');
       }
 
       return data;

@@ -339,11 +339,15 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
           Row(
             children: [
               Expanded(
-                child: Text(
-                  order.orderInfo,
-                  style: AppTextStyles.bodyBold.copyWith(fontSize: 15),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                child: Row(
+                  children: [
+                    _getPaymentMethodIcon(order.paymentProvider),
+                    const SizedBox(width: 8),
+                    Text(
+                      _translatePaymentMethod(order.paymentProvider),
+                      style: AppTextStyles.bodyBold.copyWith(fontSize: 15),
+                    ),
+                  ],
                 ),
               ),
               Container(
@@ -374,7 +378,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
                     .copyWith(fontSize: 13, color: AppColors.subtitle),
               ),
               Text(
-                _vndFormatter.format(order.amount),
+                _vndFormatter.format(order.amountVND),
                 style: AppTextStyles.profileName.copyWith(
                   color: AppColors.primary,
                   fontSize: 16,
@@ -387,52 +391,38 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Mã giao dịch:',
+                'Điểm nhận:',
                 style: AppTextStyles.bodyRegular
                     .copyWith(fontSize: 13, color: AppColors.subtitle),
               ),
-              Flexible(
-                child: Text(
-                  order.vnpTxnRef,
-                  style: AppTextStyles.bodyRegular.copyWith(fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
+              Row(
+                children: [
+                  Text(
+                    '+${order.pointsToGrant}',
+                    style: AppTextStyles.bodyBold.copyWith(
+                      fontSize: 14,
+                      color: AppColors.success,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  SvgPicture.asset(
+                    AppAssets.iconCoin,
+                    width: 16,
+                    height: 16,
+                    colorFilter: const ColorFilter.mode(
+                      AppColors.success,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          if (order.paymentMethod != null) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Phương thức:',
-                  style: AppTextStyles.bodyRegular
-                      .copyWith(fontSize: 13, color: AppColors.subtitle),
-                ),
-                Row(
-                  children: [
-                    _getPaymentMethodIcon(order.paymentMethod!),
-                    const SizedBox(width: 6),
-                    Text(
-                      _translatePaymentMethod(order.paymentMethod!),
-                      style: AppTextStyles.bodyBold.copyWith(fontSize: 13),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
           const SizedBox(height: 4),
           Text(
             'Ngày tạo: ${_dateFormatter.format(order.createdAt)}',
             style: AppTextStyles.postMeta.copyWith(fontSize: 12),
           ),
-          if (order.status == 'SUCCESS')
-            Text(
-              'Hoàn thành: ${_dateFormatter.format(order.updatedAt)}',
-              style: AppTextStyles.postMeta.copyWith(fontSize: 12),
-            ),
         ],
       ),
     );

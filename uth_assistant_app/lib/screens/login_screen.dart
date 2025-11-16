@@ -5,6 +5,7 @@ import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_notification.dart';
 import '../services/auth_service.dart';
+import '../services/fcm_service.dart';
 
 class AppAssets {
   static const String loginIllustration =
@@ -93,6 +94,12 @@ class _LoginScreenState extends State<LoginScreen>
     final String message = responseData['message'] ?? 'Lỗi không xác định';
 
     if (success) {
+      // Gửi FCM token lên server sau khi login thành công
+      final fcmToken = await FCMService.getToken();
+      if (fcmToken != null) {
+        await _authService.saveFcmToken(fcmToken);
+      }
+
       CustomNotification.success(context, message);
       // Đợi animation xong rồi mới chuyển trang
       Future.delayed(const Duration(milliseconds: 500), () {

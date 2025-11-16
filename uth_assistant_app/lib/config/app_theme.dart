@@ -284,10 +284,10 @@ class AppAssets {
   static const String _imagesPicPath = 'assets/images_pic';
 
   // --- API URLS ---
-  static const bool _isLocal = false;
+  static const bool _isLocal = true;
   static const String _prodBaseUrl = 'https://uthstudent.onrender.com/api';
   // TODO: Thay '192.168.1.11' bằng IP Wifi của máy tính bạn
-  static const String _localBaseUrl = 'http://10.160.174.39:5000/api';
+  static const String _localBaseUrl = 'http://192.168.1.14:5000/api';
 
   static final String _apiBaseUrl = _isLocal ? _localBaseUrl : _prodBaseUrl;
 
@@ -298,6 +298,7 @@ class AppAssets {
   static final String uploadApiBaseUrl = '$_apiBaseUrl/upload';
   static final String documentApiBaseUrl = '$_apiBaseUrl/documents';
   static final String paymentApiBaseUrl = '$_apiBaseUrl/payment';
+  static final String pointsApiBaseUrl = '$_apiBaseUrl/points'; // API điểm
   static final String userApiBaseUrl = '$_apiBaseUrl/users';
 
   static const String newsApiUrl = _isLocal
@@ -314,24 +315,26 @@ class AppAssets {
   // Số điểm nạp tối thiểu
   static const int minPoints = 10;
 
-  // Thời gian polling (giây)
-  static const int pollingIntervalSeconds = 3;
+  // Thời gian polling (giây) - giảm xuống 1s để phản hồi nhanh
+  static const int pollingIntervalSeconds = 1;
 
-  // Số lần polling tối đa (60 lần x 3s = 3 phút)
-  static const int maxPollingAttempts = 60;
+  // Số lần polling tối đa (180 lần x 1s = 3 phút)
+  static const int maxPollingAttempts = 180;
 
-  // Thời gian delay giữa các dialog (milliseconds)
-  static const int dialogDelayMs = 300;
+  // Thời gian delay giữa các dialog (milliseconds) - giảm xuống 100ms
+  static const int dialogDelayMs = 100;
 
   // Thời gian delay đóng WebView (milliseconds)
   static const int webViewCloseDelayMs = 100;
 
   // --- CÁC TỪNG KHÓA RETURN URL ---
-  // Danh sách các từ khóa trong returnUrl để phát hiện redirect
+  // Danh sách các từ khóa trong returnUrl để phát hiện redirect từ backend
+  // KHÔNG thêm domain của payment gateway (VNPay, MoMo) vào đây!
   static const List<String> paymentReturnUrlKeywords = [
-    'ngrok-free.dev',
-    'vnpay-return',
-    'payment-result',
+    'ngrok-free.dev', // Backend domain
+    'vnpay-return', // Backend return path
+    'payment-result', // Backend result path
+    'momo-return', // Backend MoMo return path
   ];
 
   // --- GÓI NẠP ĐIỂM MẶC ĐỊNH ---
@@ -426,6 +429,7 @@ class AppAssets {
   static const String iconFileCheck = '$_imagesPath/icon_file_check.svg';
   static const String iconSettings = '$_imagesPath/icon_settings.svg';
   static const String iconLogout = '$_imagesPath/icon_logout.svg';
+  static const String iconApp = '$_imagesPath/app_icon.svg';
 
   // --- ICON TÍNH NĂNG ---
   static const String iconWallet = '$_imagesPath/icon_wallet.svg';

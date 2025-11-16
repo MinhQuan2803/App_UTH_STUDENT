@@ -6,6 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:uth_assistant_app/config/app_theme.dart';
+import 'profile_service.dart';
+import 'post_service.dart';
+import 'news_service.dart';
 
 class AuthService {
   static final String _baseUrl = AppAssets.authApiBaseUrl;
@@ -227,14 +230,20 @@ class AuthService {
   // --- HÀM SIGNOUT (CẬP NHẬT) ---
   Future<void> signOut() async {
     try {
+      // Xóa tất cả cache trước
+      ProfileService.clearCache();
+      PostService.clearCache();
+      NewsService.clearCache();
+
       // Xóa tất cả dữ liệu đã lưu
       await _storage.delete(key: _tokenKey);
-      await _storage.delete(key: _refreshTokenKey); // Xóa refresh token
+      await _storage.delete(key: _refreshTokenKey);
       await _storage.delete(key: _usernameKey);
       await _storage.delete(key: 'userId');
-      if (kDebugMode) print('✓ Local tokens and user info deleted');
+
+      if (kDebugMode) print('✓ All caches and tokens cleared');
     } catch (e) {
-      if (kDebugMode) print('✗ Signout Error (local delete): $e');
+      if (kDebugMode) print('✗ Signout Error: $e');
     }
   }
 
@@ -408,8 +417,8 @@ class AuthService {
       isExpired = true;
     }
 
-    bool aboutToExpire = remainingTime.inMinutes < 5;
-
+    // bool aboutToExpire = remainingTime.inMinutes < 5;
+    bool aboutToExpire = false; // <-- Tạm thời gán bằng false
     if (isExpired || aboutToExpire) {
       if (kDebugMode) {
         if (isExpired) {
@@ -432,5 +441,50 @@ class AuthService {
     }
 
     return token;
+  }
+
+  // --- HÀM GỬI FCM TOKEN LÊN SERVER ---
+  /// Gửi FCM token lên backend sau khi login
+  Future<bool> saveFcmToken(String fcmToken) async {
+    try {
+      final token = await getValidToken();
+      if (token == null) {
+        if (kDebugMode) print('✗ No access token, cannot save FCM token');
+        return false;
+      }
+
+      // Sử dụng userApiBaseUrl thay vì authApiBaseUrl
+      final userApiBaseUrl = AppAssets.userApiBaseUrl;
+      final response = await http
+          .patch(
+            Uri.parse('$userApiBaseUrl/me/fcm-token'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({'fcmToken': fcmToken}),
+          )
+          .timeout(_timeoutDuration);
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) print('✓ FCM token saved to server');
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('✗ Failed to save FCM token: ${response.statusCode}');
+          print('Response: ${response.body}');
+        }
+        return false;
+      }
+    } on TimeoutException {
+      if (kDebugMode) print('✗ Timeout saving FCM token');
+      return false;
+    } on SocketException {
+      if (kDebugMode) print('✗ Network error saving FCM token');
+      return false;
+    } catch (e) {
+      if (kDebugMode) print('✗ Error saving FCM token: $e');
+      return false;
+    }
   }
 }
