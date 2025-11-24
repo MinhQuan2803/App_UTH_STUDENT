@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 // Lớp quản lý màu sắc trong ứng dụng
 class AppColors {
   // Bảng màu chính
-  static const Color primary = Color(0xFF38B2AC);
+  static const Color primary = Color(0xFF4BC6B9);
+  static const Color primaryDark = Color(0xFF008B8B);
+  static const Color primaryLight = Color(0xFFE8F8F5);
   static const Color secondary = Color(0xFFE3F2FD);
   static const Color accent = Color(0xFFFF4081); // Hồng san hô cho điểm nhấn
   static const Color background = Color(0xFFF5F7FA); // Xám rất nhạt, sạch sẽ
@@ -275,7 +277,33 @@ class AppTextStyles {
       fontSize: 15,
       color: AppColors.subtitle,
       height: 1.4);
-}
+
+  static const TextStyle usernamePacifico = TextStyle(
+    fontFamily: 'Pacifico',
+    fontSize: 20,
+    fontWeight: FontWeight.w300,
+    color: AppColors.primary,
+  );
+  static const TextStyle numberInfor = TextStyle(
+      fontFamily: 'Poppins',
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: AppColors.text
+  );
+  static const TextStyle beVietnam = TextStyle(
+      fontFamily: 'BeVietnamPro',
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      color: AppColors.subtitle
+  );
+  static const TextStyle title = TextStyle(
+      fontFamily: 'Montserrat',
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      color: AppColors.text
+  );
+  }
+
 
 // Lớp quản lý đường dẫn tài sản (assets)
 class AppAssets {
@@ -428,7 +456,7 @@ class AppAssets {
   static const String iconUpload = '$_imagesPath/icon_upload.svg';
   static const String iconEdit = '$_imagesPath/icon_edit.svg';
   static const String iconFileCheck = '$_imagesPath/icon_file_check.svg';
-  static const String iconSettings = '$_imagesPath/icon_settings.svg';
+  static const String iconSetting = '$_imagesPath/icon_setting.svg';
   static const String iconLogout = '$_imagesPath/icon_logout.svg';
   static const String iconApp = '$_imagesPath/app_icon.svg';
   static const String iconRobot = '$_imagesPath/icon_robot.svg';
@@ -441,6 +469,7 @@ class AppAssets {
   static const String iconSuccess = '$_imagesPath/icon_success.svg';
   static const String iconError = '$_imagesPath/icon_error.svg';
   static const String iconWarning = '$_imagesPath/icon_warning.svg';
+  static const String iconPrivate = '$_imagesPath/icon_private.svg';
 
   // --- ICON ĐIỀU HƯỚNG & FAB ---
   static const String fabBot = '$_imagesPath/fab_bot.svg';

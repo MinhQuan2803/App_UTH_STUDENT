@@ -19,12 +19,11 @@ class MainNavBar extends StatelessWidget {
     final itemWidth = screenWidth / itemCount;
     const indicatorWidth = 24.0;
     
-    // Tính toán vị trí bên trái (left offset) cho thanh ngang
-    // Vị trí này sẽ được AnimatedPositioned sử dụng để tạo hiệu ứng
+    // Tính toán vị trí Indicator
     final double indicatorOffset = (itemWidth * selectedIndex) + (itemWidth / 2) - (indicatorWidth / 2);
 
     return Container(
-      height: 75, // Chiều cao của toàn bộ thanh nav
+      // BƯỚC 1: Trang trí nền và bóng đổ
       decoration: const BoxDecoration(
         color: AppColors.white,
         boxShadow: [
@@ -35,55 +34,90 @@ class MainNavBar extends StatelessWidget {
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          // Lớp 1: Thanh ngang trượt (Indicator)
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOutCubic,
-            top: 4, // Khoảng cách từ đỉnh
-            left: indicatorOffset,
-            child: Container(
-              width: indicatorWidth,
-              height: 3,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
+      
+      // BƯỚC 2: SafeArea tự động xử lý phần đệm của phím điều hướng
+      child: SafeArea(
+        top: false, 
+        child: Container(
+          // THÊM PADDING TẠI ĐÂY:
+          // Thêm khoảng cách trên/dưới để giao diện thoáng hơn (8px mỗi chiều)
+          padding: const EdgeInsets.symmetric(vertical: 8.0), 
           
-          // Lớp 2: Thanh BottomNavigationBar
-          BottomNavigationBar(
-            currentIndex: selectedIndex,
-            onTap: onTap,
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.transparent, // Nền trong suốt để thấy Container cha
-            elevation: 0, // Bỏ đổ bóng mặc định
-            selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.hintText,
-            selectedLabelStyle: AppTextStyles.navLabel.copyWith(color: AppColors.primary),
-            unselectedLabelStyle: AppTextStyles.navLabel.copyWith(color: AppColors.hintText),
-            items: [
-              _buildNavItem(AppAssets.navHome, 'Trang chủ', 0),
-              _buildNavItem(AppAssets.navBot, 'UTH Assistant', 1),
-              _buildNavItem(AppAssets.navPlus, 'Đăng bài', 2),
-              _buildNavItem(AppAssets.navFolder, 'Tài liệu', 3),
-              _buildNavItem(AppAssets.navUser, 'Hồ sơ', 4),
+          // QUAN TRỌNG: Đặt chiều cao tối thiểu để tránh lỗi "RenderBox was not laid out"
+          constraints: const BoxConstraints(minHeight: kBottomNavigationBarHeight),
+          
+          child: Stack(
+            clipBehavior: Clip.none, 
+            alignment: Alignment.bottomCenter, // Căn đáy để BottomNav quyết định chiều cao
+            children: [
+              // Lớp dưới: BottomNavigationBar
+              MediaQuery.removePadding(
+                context: context,
+                removeBottom: true, 
+                child: BottomNavigationBar(
+                  currentIndex: selectedIndex,
+                  onTap: onTap,
+                  type: BottomNavigationBarType.fixed,
+                  backgroundColor: Colors.transparent, 
+                  elevation: 0, 
+                  selectedItemColor: AppColors.primary,
+                  unselectedItemColor: AppColors.hintText,
+                  
+                  // --- PHẦN CHỈNH SỬA CỠ CHỮ ---
+                  // 1. Cập nhật trong Style (để render chính xác font weight/family nếu có)
+                  selectedLabelStyle: AppTextStyles.navLabel.copyWith(
+                    color: AppColors.primaryDark,
+                    fontSize: 10, // <--- Thay đổi cỡ chữ khi ĐƯỢC CHỌN tại đây
+                  ),
+                  unselectedLabelStyle: AppTextStyles.navLabel.copyWith(
+                    color: AppColors.hintText,
+                    fontSize: 10, // <--- Thay đổi cỡ chữ khi KHÔNG CHỌN tại đây
+                  ),
+                  
+                  // 2. Cập nhật thuộc tính của Widget (quan trọng cho việc tính toán khoảng cách layout)
+                  selectedFontSize: 12,   // <--- Thay đổi số này (VD: 10, 13, 14)
+                  unselectedFontSize: 12, // <--- Thay đổi số này (thường để bằng selectedFontSize)
+                  // ---------------------------
+
+                  items: [
+                    _buildNavItem(AppAssets.navHome, 'Trang chủ', 0),
+                    _buildNavItem(AppAssets.navBot, 'UTH Assistant', 1),
+                    _buildNavItem(AppAssets.navPlus, 'Đăng bài', 2),
+                    _buildNavItem(AppAssets.navFolder, 'Tài liệu', 3),
+                    _buildNavItem(AppAssets.navUser, 'Hồ sơ', 4),
+                  ],
+                ),
+              ),
+              
+              // Lớp trên: Indicator chạy
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOutCubic,
+                top: 0, 
+                left: indicatorOffset,
+                child: Container(
+                  width: indicatorWidth,
+                  height: 3, 
+                  margin: const EdgeInsets.only(top: 0), 
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // Widget _buildNavItem giờ đã được đơn giản hóa, không còn chứa logic vẽ thanh ngang
   BottomNavigationBarItem _buildNavItem(String iconPath, String label, int index) {
     final color = selectedIndex == index ? AppColors.primary : AppColors.hintText;
 
     return BottomNavigationBarItem(
       icon: Padding(
-        padding: const EdgeInsets.only(top: 4.0, bottom: 4.0), // Điều chỉnh padding
+        padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
         child: SvgPicture.asset(
           iconPath,
           width: 22,
@@ -94,4 +128,3 @@ class MainNavBar extends StatelessWidget {
     );
   }
 }
-

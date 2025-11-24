@@ -51,7 +51,7 @@ class ProfileActionButton extends StatelessWidget {
 
   Color _getBackgroundColor() {
     // Tất cả các nút đều dùng màu primary
-    return AppColors.primary;
+    return AppColors.primaryDark;
   }
 
   Color _getForegroundColor() {

@@ -83,6 +83,11 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // THÊM DÒNG NÀY: Cho phép body tràn xuống dưới thanh điều hướng
+      // Điều này quan trọng để MainNavBar (có background trắng) hiển thị đè lên trên
+      // và phần background trắng đó sẽ che đi thanh điều hướng hệ thống trong suốt.
+      extendBody: true, 
+      
       body: PageView(
         controller: _pageController,
         physics:

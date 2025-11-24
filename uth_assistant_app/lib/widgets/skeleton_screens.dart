@@ -18,8 +18,8 @@ class ProfileSkeletonScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: ModernAppBar(
-        title: appBarTitle,
+      appBar: AppBar(
+        title: Text(appBarTitle),
         automaticallyImplyLeading: automaticallyImplyLeading,
       ),
       body: Shimmer(

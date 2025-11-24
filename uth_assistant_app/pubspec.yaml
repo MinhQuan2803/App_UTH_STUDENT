@@ -54,6 +54,21 @@ flutter:
         - asset: fonts/LazyDog-Regular.ttf
         # - asset: fonts/LazyDog-Bold.ttf
         #   weight: 700
+    - family: Pacifico
+      fonts:
+        - asset: fonts/Pacifico-Regular.ttf
+    - family: BeVietnamPro
+      fonts:
+        - asset: fonts/BeVietnamPro-Medium.ttf
+          weight: 700
+    - family: Montserrat
+      fonts:
+        - asset: fonts/Montserrat-BoldItalic.ttf
+          weight: 700
+    - family: Poppins
+      fonts:
+        - asset: fonts/Poppins-BoldItalic.ttf
+          weight: 700
 
 flutter_launcher_icons:
   android: true

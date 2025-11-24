@@ -191,12 +191,12 @@ class _HomeScreenState extends State<HomeScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Thông báo Đào tạo',
-                    style: AppTextStyles.sectionTitle),
+                Text('Thông báo Đào tạo',
+                    style: AppTextStyles.beVietnam.copyWith(fontSize: 16,fontWeight: FontWeight.w600 ,color: AppColors.text)),
                 TextButton(
                   onPressed: () {
                     launchUrlHelper(
@@ -210,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           SizedBox(
-            height: 175,
+            height: 140,
             child: _buildNewsList(),
           ),
         ],
@@ -271,8 +271,8 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildFeedTitle() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-        child: Text('Cộng đồng sinh viên', style: AppTextStyles.sectionTitle),
+        padding: const EdgeInsets.fromLTRB(14, 6, 14, 8),
+        child: Text('Cộng đồng sinh viên', style: AppTextStyles.title.copyWith(fontSize: 18,fontWeight: FontWeight.w800 ,color: AppColors.primaryDark )),
       ),
     );
   }

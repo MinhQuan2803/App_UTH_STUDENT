@@ -13,6 +13,7 @@ import '../services/follow_service.dart';
 import '../services/post_service.dart';
 import '../models/post_model.dart';
 import 'edit_profile_screen.dart';
+import 'follow_list_screen.dart'; // Import màn hình mới
 
 class ProfileScreen extends StatefulWidget {
   final String? username;
@@ -48,22 +49,54 @@ class _ProfileScreenState extends State<ProfileScreen>
   // Cache flag - chỉ load data lần đầu
   bool _hasLoadedData = false;
 
+  // --- SCROLL CONTROL FOR EFFECT ---
+  late ScrollController _scrollController;
+  bool _isPullingDown = false; // Trạng thái đang kéo xuống (Refresh)
+  bool _isScrolled = false; // Trạng thái đã cuộn xuống xem nội dung
+
   @override
   bool get wantKeepAlive => true; // Giữ state khi chuyển tab
 
   @override
   void initState() {
     super.initState();
+
+    // 1. Khởi tạo Controller lắng nghe cuộn để tạo hiệu ứng đổi màu
+    _scrollController = ScrollController();
+    _scrollController.addListener(() {
+      final offset = _scrollController.offset;
+
+      // Logic: Kéo xuống quá giới hạn (Offset âm)
+      final isPulling = offset < 0;
+
+      // Logic: Đã cuộn nội dung lên (Offset dương)
+      // Dùng > 0 để đổi màu ngay lập tức khi cuộn
+      final isScrolled = offset > 0;
+
+      // Chỉ setState khi trạng thái thay đổi để tối ưu hiệu năng
+      if (isPulling != _isPullingDown || isScrolled != _isScrolled) {
+        setState(() {
+          _isPullingDown = isPulling;
+          _isScrolled = isScrolled;
+        });
+      }
+    });
+
     // Chỉ load data lần đầu, các lần sau sẽ dùng cache
     if (!_hasLoadedData) {
       _loadAllData();
     }
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose(); // Quan trọng: Hủy controller
+    super.dispose();
+  }
+
   Future<void> _loadAllData({bool forceRefresh = false}) async {
     if (!mounted) return;
 
-    // Nếu đã load data và không force refresh thì không load lại
     if (_hasLoadedData && !forceRefresh) {
       if (kDebugMode) print('✅ Using cached profile data');
       return;
@@ -78,7 +111,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       _myUsername = await _authService.getUsername();
       final targetUsername = widget.username ?? _myUsername;
 
-      // 1. Lấy thông tin Profile
       Map<String, dynamic> userProfile;
       if (widget.username != null && widget.username != _myUsername) {
         userProfile = await _profileService.getUserProfile(widget.username!,
@@ -94,21 +126,19 @@ class _ProfileScreenState extends State<ProfileScreen>
         _user = userProfile;
         final isMyProfile = targetUsername == _myUsername;
         _appBarTitle = isMyProfile
-            ? 'Hồ sơ của tôi'
+            ? (userProfile['username'] ?? 'Hồ sơ của tôi')
             : (userProfile['username'] ?? 'Hồ sơ');
 
-        // Lấy followers/following count từ profile luôn
         _actualFollowersCount = userProfile['followerCount'] ?? 0;
         _actualFollowingCount = userProfile['followingCount'] ?? 0;
       });
 
-      // 2. Chỉ cần lấy posts, followers/following đã có từ profile rồi
       await _loadPosts(userProfile['username'], forceRefresh: forceRefresh);
 
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _hasLoadedData = true; // Đánh dấu đã load xong
+          _hasLoadedData = true;
         });
       }
     } catch (e) {
@@ -128,7 +158,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _loadPosts(String? username, {bool forceRefresh = false}) async {
     if (username == null) return;
     try {
-      // PostService.getProfilePosts() đã trả về List<Post> sẵn
       final posts = await _postService.getProfilePosts(
         username: username,
         page: 0,
@@ -151,8 +180,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       });
     }
   }
-
-  // --- User Actions ---
 
   Future<void> _handleFollowToggle() async {
     if (_user == null || _isFollowLoading) return;
@@ -260,6 +287,20 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   // --- UI Components ---
+  
+  // Hàm điều hướng sang màn hình Follow
+  void _navigateToFollowList(int initialIndex) {
+    if (_user == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FollowListScreen(
+          username: _user!['username'] ?? 'User',
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
 
   Widget _buildUserInfoSection(bool isOwner) {
     final String? avatarUrl = _user!['avatarUrl'];
@@ -267,12 +308,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     final String? bio = _user!['bio'];
     final bool isFollowing = _user!['isFollowing'] ?? false;
 
-    // Hiển thị "Bạn" thay vì tên nếu là owner
-    final String displayName = isOwner ? username : username;
-
     return Container(
       color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
       child: Column(
         children: [
           // Row: Avatar + Stats
@@ -282,7 +320,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey.shade200, width: 1),
+                  border: Border.all(color: AppColors.primaryDark, width: 3),
                 ),
                 child: CircleAvatar(
                   radius: 40,
@@ -301,19 +339,45 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(width: 4),
               // Stats
               Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatItem('$_actualPostsCount', 'Bài viết'),
-                    _buildStatItem('$_actualFollowersCount', 'Người theo dõi'),
-                    _buildStatItem('$_actualFollowingCount', 'Đang theo dõi'),
-                  ],
-                ),
-              ),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 6,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 10.0),
+                        child: Text(
+                          username,
+                          style: AppTextStyles.usernamePacifico
+                              .copyWith(color: AppColors.text),
+                          textAlign: TextAlign.left,
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStatItem('$_actualPostsCount', 'Bài viết'), // Bài viết không cần click
+                          
+                          // THAY ĐỔI: Thêm onTap cho Follower
+                          _buildStatItem(
+                            '$_actualFollowersCount', 
+                            'Người theo dõi',
+                            onTap: () => _navigateToFollowList(1), // Index 1: Follower
+                          ),
+                          
+                          // THAY ĐỔI: Thêm onTap cho Following
+                          _buildStatItem(
+                            '$_actualFollowingCount', 
+                            'Đang theo dõi',
+                            onTap: () => _navigateToFollowList(0), // Index 0: Đang follow
+                          ),
+                        ],
+                      ),
+                    ]),
+              )
             ],
           ),
 
-          const SizedBox(height: 2),
+          const SizedBox(height: 10),
 
           // Name & Bio
           Align(
@@ -321,10 +385,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  displayName,
-                  style: AppTextStyles.heading1.copyWith(fontSize: 18),
-                ),
                 if (bio != null && bio.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
@@ -341,7 +401,6 @@ class _ProfileScreenState extends State<ProfileScreen>
 
           // Action Buttons
           if (isOwner)
-            // Chỉ hiện 1 nút Ví UTH với icon khi xem profile của mình
             Row(
               children: [
                 Expanded(
@@ -360,7 +419,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                     label: const Text('Ví UTH'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: AppColors.primaryDark,
                       foregroundColor: AppColors.white,
                       elevation: 0,
                       minimumSize: const Size(double.infinity, 44),
@@ -373,7 +432,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ],
             )
           else
-            // Hiện 2 nút Theo dõi và Nhắn tin cho khách
             Row(
               children: [
                 Expanded(
@@ -403,15 +461,16 @@ class _ProfileScreenState extends State<ProfileScreen>
           const Divider(thickness: 2, color: AppColors.divider),
 
           // Tiêu đề "Tất cả bài viết"
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 0.0),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10.0, vertical: 0.0),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 'Tất cả bài viết',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                style: AppTextStyles.title.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
                   color: AppColors.text,
                 ),
               ),
@@ -422,18 +481,39 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildStatItem(String value, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: AppTextStyles.bodyBold
-              .copyWith(fontSize: 19, color: AppColors.primary),
-          selectionColor: AppColors.primary,
+  // --- CẬP NHẬT: Widget Stat Item dễ nhấn hơn ---
+  Widget _buildStatItem(String value, String label, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque, // QUAN TRỌNG: Bắt sự kiện nhấn trên toàn bộ vùng chứa kể cả khoảng trắng
+      child: Container(
+        color: Colors.transparent, // Đảm bảo bắt được sự kiện nhấn
+        // Padding rộng ra để dễ nhấn (12px ngang, 8px dọc)
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start, // Căn giữa nội dung
+          children: [
+            Text(
+              value,
+              style: AppTextStyles.numberInfor.copyWith(
+                fontSize: 16, 
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              label, 
+              style: AppTextStyles.bodyRegular.copyWith(
+                fontSize: 10, // Chữ nhỏ gọn
+                color: Colors.grey[700],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
-        Text(label, style: AppTextStyles.bodyRegular.copyWith(fontSize: 12)),
-      ],
+      ),
     );
   }
 
@@ -445,6 +525,12 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     final bool isPushed = widget.username != null;
     final bool isOwner = _user?['isOwner'] ?? false;
+
+    // --- LOGIC MÀU SẮC DỰA TRÊN 3 TRẠNG THÁI ---
+    // 1. Kéo xuống (_isPullingDown) hoặc Đã cuộn (_isScrolled) -> Màu ĐEN
+    // 2. Ở vị trí đầu (Mặc định) -> Màu TRẮNG
+    final currentColor =
+        (_isPullingDown || _isScrolled) ? Colors.black : AppColors.white;
 
     if (_isLoading) {
       return ProfileSkeletonScreen(
@@ -475,35 +561,104 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: ModernAppBar(
-        title: "Hồ sơ của bạn",
-        automaticallyImplyLeading: isPushed,
-        actions: [
-          IconButton(
-            icon: SvgPicture.asset(
-              isOwner ? AppAssets.iconSettings : AppAssets.iconWarning,
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(
-                AppColors.text,
-                BlendMode.srcIn,
-              ),
-            ),
-            onPressed: () => _showMenuBottomSheet(context, isOwner),
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: () => _loadAllData(forceRefresh: true),
         child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          controller: _scrollController, // Gắn Controller
+          physics: const AlwaysScrollableScrollPhysics(
+              parent:
+                  BouncingScrollPhysics()), // Bắt buộc để kéo quá giới hạn mượt mà
           slivers: [
-            // Phần 1: Header Thông tin (Avatar, Bio, Stats...)
+            SliverAppBar(
+              expandedHeight: 45,
+              toolbarHeight: 45,
+              pinned: true,
+              elevation: 0,
+              backgroundColor: _isScrolled ? Colors.white : Colors.transparent,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: BoxDecoration(
+                    color: _isScrolled
+                        ? Colors.white
+                        : (_isPullingDown ? Colors.transparent : null),
+                    gradient: (!_isScrolled && !_isPullingDown)
+                        ? LinearGradient(
+                            colors: [AppColors.primary, AppColors.primaryDark],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    border: _isScrolled
+                        ? Border(
+                            bottom: BorderSide(color: Colors.grey.shade200))
+                        : null,
+                  ),
+                ),
+              ),
+
+              // --- CHANGED: wrap title with GestureDetector to scroll to top on tap ---
+              title: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  if (_scrollController.hasClients) {
+                    _scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                },
+                child: Row(
+                  children: [
+                    isOwner
+                        ? Padding(
+                            padding: const EdgeInsets.all(0.0),
+                            child: SvgPicture.asset(
+                              AppAssets.iconPrivate,
+                              width: 20,
+                              height: 20,
+                              colorFilter: ColorFilter.mode(
+                                  currentColor, BlendMode.srcIn),
+                            ),
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: Icon(Icons.arrow_back,
+                                  color: currentColor, size: 25),
+                            ),
+                          ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _appBarTitle,
+                      style: AppTextStyles.usernamePacifico
+                          .copyWith(color: currentColor, fontSize: 18),
+                    ),
+                  ],
+                ),
+              ),
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: SvgPicture.asset(
+                    AppAssets.iconSetting,
+                    width: 24,
+                    height: 24,
+                    colorFilter:
+                        ColorFilter.mode(currentColor, BlendMode.srcIn),
+                  ),
+                  onPressed: () => _showMenuBottomSheet(context, isOwner),
+                ),
+              ],
+            ),
+
+            // Phần 1: Header Thông tin
             SliverToBoxAdapter(
               child: _buildUserInfoSection(isOwner),
             ),
 
-            // Phần 2: Danh sách bài viết (Grid hoặc List)
+            // Phần 2: Danh sách bài viết
             if (_posts.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
@@ -525,7 +680,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
+                      padding: const EdgeInsets.only(bottom: 0.0),
                       child: HomePostCard(
                         post: _posts[index],
                         username: _myUsername,

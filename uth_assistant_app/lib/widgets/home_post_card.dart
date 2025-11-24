@@ -9,8 +9,6 @@ import '../screens/add_post_screen.dart';
 import 'custom_notification.dart';
 import 'package:flutter/foundation.dart'; // Cho kDebugMode
 
-/// Widget này hiển thị một bài viết đầy đủ theo phong cách Facebook
-/// và tự quản lý các tương tác của nó (like, delete, update).
 class HomePostCard extends StatefulWidget {
   final Post post;
   final String? username; // Username của người dùng đang đăng nhập
@@ -257,15 +255,15 @@ class _HomePostCardState extends State<HomePostCard> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                 child: Text(widget.post.text,
-                    style: AppTextStyles.postContent.copyWith(fontSize: 14)),
+                    style: AppTextStyles.postContent.copyWith(fontSize: 16,fontWeight: FontWeight.w400)),
               ),
             if (widget.post.mediaUrls.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 8.0),
               _buildMediaGallery(context, widget.post.mediaUrls),
             ],
             _buildActionButtons(context),
             // Divider giữa các posts
-            const Divider(height: 1, thickness: 8, color: AppColors.background),
+            const Divider(height: 1, thickness: 10, color: AppColors.background),
           ],
         ),
       ),
@@ -589,16 +587,17 @@ class _HomePostCardState extends State<HomePostCard> {
 
   Widget _buildActionButtons(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 12.0),
+      padding: const EdgeInsets.fromLTRB(12.0, 8.0, 8.0, 12.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
+            height: 35,
             decoration: BoxDecoration(
               color: AppColors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: AppColors.primary.withOpacity(0.15),
+                color: AppColors.primary.withOpacity(0.5),
                 width: 1,
               ),
               boxShadow: [
@@ -609,7 +608,7 @@ class _HomePostCardState extends State<HomePostCard> {
                 ),
               ],
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6.0),
+            padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 0.0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

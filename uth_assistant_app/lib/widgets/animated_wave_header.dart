@@ -49,7 +49,7 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader>
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -95,8 +95,9 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader>
                         children: [
                           const Text('Chào bạn,',
                               style: AppTextStyles.headerGreeting),
+                              const SizedBox(height: 0),
                           Text(widget.username,
-                              style: AppTextStyles.headerName,
+                              style: AppTextStyles.usernamePacifico.copyWith(color: AppColors.white,fontSize: 16),
                               overflow: TextOverflow.ellipsis),
                         ],
                       ),

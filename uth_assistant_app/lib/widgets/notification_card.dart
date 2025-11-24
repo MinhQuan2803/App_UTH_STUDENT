@@ -16,60 +16,102 @@ class NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 240,
+      width: 220,
+      height: 140,
       decoration: BoxDecoration(
-        color: AppColors.white,
         borderRadius: BorderRadius.circular(16.0),
-        boxShadow: const [BoxShadow(color: AppColors.shadow, blurRadius: 10)],
+       
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16.0),
-              topRight: Radius.circular(16.0),
-            ),
-
-            // --- THAY ĐỔI QUAN TRỌNG TẠI ĐÂY ---
-            // Đổi từ Image.network thành Image.asset
-            child: Image.asset(
-              imageUrl, // Bây giờ nó đọc từ thư mục assets
-              height: 100,
-              width: double.infinity,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background image
+            Image.asset(
+              imageUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                // Xử lý nếu đường dẫn asset bị sai
                 return Container(
-                  height: 90,
                   color: AppColors.divider,
                   child:
                       const Icon(Icons.broken_image, color: AppColors.hintText),
                 );
               },
             ),
-            // ------------------------------------
-          ),
-          Padding(
-            padding: const EdgeInsets.all(6.00),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTextStyles.notificationTitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+
+            // Gradient overlay mờ (từ trong suốt → đen)
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.4),
+                    Colors.black.withOpacity(0.75),
+                  ],
+                  stops: const [0.3, 0.6, 1.0],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  date,
-                  style: AppTextStyles.notificationDate,
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+
+            // Content nổi lên phía trên
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: AppTextStyles.notificationTitle.copyWith(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 10,
+                        color: AppColors.white.withOpacity(0.9),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        date,
+                        style: AppTextStyles.notificationDate.copyWith(
+                          color: AppColors.white.withOpacity(0.9),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
