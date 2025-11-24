@@ -4,6 +4,7 @@ import '../widgets/notification_card.dart';
 import '../widgets/animated_wave_header.dart';
 import '../widgets/home_post_card.dart'; // Import widget mới
 import '../widgets/custom_button.dart'; // Import CustomButton
+import '../widgets/skeleton_screens.dart'; // Import Skeleton Loading
 import '../services/news_service.dart';
 import '../services/post_service.dart';
 import '../services/profile_service.dart';
@@ -219,7 +220,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildNewsList() {
     if (_isLoadingNews) {
-      return const Center(child: CircularProgressIndicator());
+      return NewsListSkeleton();
     }
     if (_newsError.isNotEmpty) {
       return Center(
@@ -278,8 +279,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildPostList() {
     if (_isLoadingPosts) {
-      return const SliverFillRemaining(
-        child: Center(child: CircularProgressIndicator()),
+      return SliverFillRemaining(
+        child: PostsListSkeleton(itemCount: 4),
       );
     }
     if (_postsError.isNotEmpty) {

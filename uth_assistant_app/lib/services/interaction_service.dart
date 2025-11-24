@@ -17,8 +17,9 @@ class InteractionService {
   }
 
   /// Toggle like cho bài viết
-  /// API: POST /api/posts/:postId/like (updated endpoint)
-  /// Response: { "message": "Liked post successfully", "likesCount": 5 }
+  /// API: POST /api/posts/:postId/react (correct endpoint)
+  /// Body: { "type": "like" }
+  /// Response: { "newReactionType": "like" | null }
   Future<Map<String, dynamic>> toggleLike(String postId) async {
     try {
       final token = await _getToken();
@@ -26,7 +27,7 @@ class InteractionService {
         throw Exception('Chưa đăng nhập');
       }
 
-      final url = Uri.parse('$baseUrl/posts/$postId/like');
+      final url = Uri.parse('$baseUrl/posts/$postId/react');
 
       if (kDebugMode) {
         print('=== TOGGLE LIKE ===');
@@ -41,6 +42,7 @@ class InteractionService {
           'Authorization': 'Bearer $token',
           'Cookie': 'token=$token',
         },
+        body: json.encode({'type': 'like'}),
       );
 
       if (kDebugMode) {
@@ -60,16 +62,18 @@ class InteractionService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
 
-        // API trả về message: "Liked post successfully" hoặc "Unliked post successfully"
-        final isLiked = data['message']?.toString().contains('Liked') ?? true;
+        // API trả về: { "newReactionType": "like" | "dislike" | null, "likesCount": 5, "dislikesCount": 2 }
+        final newReactionType = data['newReactionType'];
+        final isLiked = newReactionType == 'like';
 
-        if (kDebugMode) print('✓ Toggle like thành công: isLiked=$isLiked');
+        if (kDebugMode)
+          print('✓ Toggle like thành công: newReactionType=$newReactionType');
 
         return {
           'success': true,
-          'message': data['message'] ?? 'Thành công',
           'isLiked': isLiked,
           'likesCount': data['likesCount'] ?? 0,
+          'dislikesCount': data['dislikesCount'] ?? 0,
         };
       } else {
         // Try to parse error

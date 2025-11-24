@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../config/app_theme.dart';
 import '../models/post_model.dart';
 import '../services/post_service.dart';
+import '../services/interaction_service.dart';
 import '../utils/time_formatter.dart';
 import '../screens/add_post_screen.dart';
 import 'custom_notification.dart';
@@ -31,23 +33,30 @@ class HomePostCard extends StatefulWidget {
 
 class _HomePostCardState extends State<HomePostCard> {
   late bool _isLiked;
+  late bool _isDisliked;
   late int _likesCount;
+  late int _dislikesCount;
   bool _isLiking = false;
+  bool _isDisliking = false;
   final PostService _postService = PostService();
-
-  // GlobalKey để lấy context stable ngay cả khi widget bị dispose
-  final GlobalKey _key = GlobalKey();
+  final InteractionService _interactionService = InteractionService();
 
   @override
   void initState() {
     super.initState();
     _isLiked = widget.post.myReactionType == 'like';
+    _isDisliked = widget.post.myReactionType == 'dislike';
     _likesCount = widget.post.likesCount;
+    _dislikesCount = widget.post.dislikesCount;
   }
 
   // Xử lý khi nhấn nút Thích
   Future<void> _handleLikePost() async {
     if (_isLiking) return;
+
+    // Optimistic update
+    final wasLiked = _isLiked;
+    final oldLikesCount = _likesCount;
 
     setState(() {
       _isLiking = true;
@@ -57,24 +66,33 @@ class _HomePostCardState extends State<HomePostCard> {
       } else {
         _likesCount++;
         _isLiked = true;
+        // Nếu đang dislike, chuyển sang like
+        if (_isDisliked) {
+          _dislikesCount--;
+          _isDisliked = false;
+        }
       }
     });
 
     try {
-      await _postService.likePost(widget.post.id, type: 'like');
+      // Gọi API toggle like
+      final result = await _interactionService.toggleLike(widget.post.id);
+
+      // Cập nhật với data thật từ server
+      if (mounted) {
+        setState(() {
+          _isLiked = result['isLiked'] ?? false;
+          _likesCount = result['likesCount'] ?? _likesCount;
+        });
+      }
     } catch (e) {
       if (kDebugMode) print("Lỗi khi like: $e");
-      // Rollback
-      setState(() {
-        if (_isLiked) {
-          _likesCount--;
-          _isLiked = false;
-        } else {
-          _likesCount++;
-          _isLiked = true;
-        }
-      });
+      // Rollback optimistic update
       if (mounted) {
+        setState(() {
+          _isLiked = wasLiked;
+          _likesCount = oldLikesCount;
+        });
         CustomNotification.error(
           context,
           e.toString().replaceFirst('Exception: ', ''),
@@ -83,6 +101,55 @@ class _HomePostCardState extends State<HomePostCard> {
     } finally {
       if (mounted) {
         setState(() => _isLiking = false);
+      }
+    }
+  }
+
+  // Xử lý khi nhấn nút Không thích
+  Future<void> _handleDislikePost() async {
+    if (_isDisliking) return;
+
+    // Optimistic update
+    final wasDisliked = _isDisliked;
+    final oldDislikesCount = _dislikesCount;
+
+    setState(() {
+      _isDisliking = true;
+      if (_isDisliked) {
+        _dislikesCount--;
+        _isDisliked = false;
+      } else {
+        _dislikesCount++;
+        _isDisliked = true;
+        // Nếu đang like, chuyển sang dislike
+        if (_isLiked) {
+          _likesCount--;
+          _isLiked = false;
+        }
+      }
+    });
+
+    try {
+      // Gọi API với type='dislike'
+      await _postService.likePost(widget.post.id, type: 'dislike');
+
+      if (kDebugMode) print('✓ Dislike thành công');
+    } catch (e) {
+      if (kDebugMode) print("Lỗi khi dislike: $e");
+      // Rollback optimistic update
+      if (mounted) {
+        setState(() {
+          _isDisliked = wasDisliked;
+          _dislikesCount = oldDislikesCount;
+        });
+        CustomNotification.error(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDisliking = false);
       }
     }
   }
@@ -111,22 +178,17 @@ class _HomePostCardState extends State<HomePostCard> {
             onPressed: () async {
               Navigator.pop(dialogContext); // Đóng dialog xác nhận
 
-              // Lấy context từ GlobalKey - context này sẽ KHÔNG bị deactivate
-              final keyContext = _key.currentContext;
-              if (keyContext == null || !keyContext.mounted) return;
-
               // Hiển thị thông báo đang xóa
-              CustomNotification.info(keyContext, 'Đang xóa bài viết...');
+              if (!mounted) return;
+              CustomNotification.info(context, 'Đang xóa bài viết...');
 
               try {
                 await _postService.deletePost(widget.post.id);
 
-                // Hiển thị thông báo thành công (dùng key context)
-                if (_key.currentContext != null &&
-                    _key.currentContext!.mounted) {
-                  CustomNotification.success(
-                      _key.currentContext!, 'Đã xóa bài viết');
-                }
+                // Kiểm tra mounted chuẩn Flutter
+                if (!mounted) return;
+
+                CustomNotification.success(context, 'Đã xóa bài viết');
 
                 // Đợi notification render
                 await Future.delayed(const Duration(milliseconds: 200));
@@ -136,14 +198,11 @@ class _HomePostCardState extends State<HomePostCard> {
                   widget.onPostDeleted();
                 }
               } catch (e) {
-                // Show error nếu context vẫn còn
-                if (_key.currentContext != null &&
-                    _key.currentContext!.mounted) {
-                  CustomNotification.error(
-                    _key.currentContext!,
-                    e.toString().replaceFirst('Exception: ', ''),
-                  );
-                }
+                if (!mounted) return;
+                CustomNotification.error(
+                  context,
+                  e.toString().replaceFirst('Exception: ', ''),
+                );
               }
             },
             child: const Text('Xóa', style: AppTextStyles.deleteDialogText),
@@ -180,44 +239,33 @@ class _HomePostCardState extends State<HomePostCard> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      key: _key, // Gắn GlobalKey vào widget root
       onTap: widget.isDetailView
           ? null
           : _navigateToDetail, // Tắt tap khi ở detail view
       child: Container(
-        margin: const EdgeInsets.only(top: 8.0),
-        decoration: BoxDecoration(
+        margin: const EdgeInsets.only(bottom: 8.0),
+        decoration: const BoxDecoration(
           color: AppColors.white,
-          border: const Border(
-              left: BorderSide(color: AppColors.primary, width: 3)),
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.shadow.withOpacity(0.1),
-                blurRadius: 2,
-                offset: const Offset(0, 1))
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Quan trọng: Tránh unbounded height
           children: [
             _buildPostHeader(context),
             if (widget.post.text.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                 child: Text(widget.post.text,
-                    style: AppTextStyles.postContent.copyWith(fontSize: 15)),
+                    style: AppTextStyles.postContent.copyWith(fontSize: 14)),
               ),
             if (widget.post.mediaUrls.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildMediaGallery(context, widget.post.mediaUrls),
             ],
-            if (_likesCount > 0 || widget.post.commentsCount > 0)
-              _buildPostStats(_likesCount, widget.post.commentsCount),
-            Divider(
-                height: 1,
-                thickness: 1,
-                color: AppColors.primary.withOpacity(0.1)),
             _buildActionButtons(context),
+            // Divider giữa các posts
+            const Divider(height: 1, thickness: 8, color: AppColors.background),
           ],
         ),
       ),
@@ -257,23 +305,9 @@ class _HomePostCardState extends State<HomePostCard> {
     }
   }
 
-  // Helper: Lấy label hiển thị (optional)
-  String _getPrivacyLabel(String privacy) {
-    switch (privacy) {
-      case 'public':
-        return 'Công khai';
-      case 'friends':
-        return 'Bạn bè';
-      case 'private':
-        return 'Riêng tư';
-      default:
-        return 'Công khai';
-    }
-  }
-
   Widget _buildPostHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.all(8.0),
       child: Row(
         children: [
           GestureDetector(
@@ -286,16 +320,16 @@ class _HomePostCardState extends State<HomePostCard> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3), width: 2),
+                    color: AppColors.primary.withOpacity(0.3), width: 1.5),
               ),
               child: CircleAvatar(
-                radius: 20,
-                backgroundImage: NetworkImage(_getAvatarUrl()),
+                radius: 18,
+                backgroundImage: CachedNetworkImageProvider(_getAvatarUrl()),
                 onBackgroundImageError: (_, __) {},
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: GestureDetector(
               onTap: () => Navigator.pushNamed(context, '/profile',
@@ -304,16 +338,16 @@ class _HomePostCardState extends State<HomePostCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(widget.post.author.username,
-                      style: AppTextStyles.postName.copyWith(fontSize: 15)),
-                  const SizedBox(height: 2),
+                      style: AppTextStyles.postName.copyWith(fontSize: 14)),
+                  const SizedBox(height: 1),
                   Row(
                     children: [
                       Text(formatPostTime(widget.post.createdAt),
-                          style: AppTextStyles.postMeta.copyWith(fontSize: 12)),
-                      const SizedBox(width: 4),
+                          style: AppTextStyles.postMeta.copyWith(fontSize: 11)),
+                      const SizedBox(width: 3),
                       Icon(
                         _getPrivacyIcon(widget.post.privacy),
-                        size: 12,
+                        size: 11,
                         color: AppColors.primary.withOpacity(0.6),
                       ),
                     ],
@@ -553,62 +587,78 @@ class _HomePostCardState extends State<HomePostCard> {
     );
   }
 
-  Widget _buildPostStats(int likesCount, int commentsCount) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      child: Row(
-        children: [
-          if (likesCount > 0) ...[
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                    colors: [AppColors.primary, AppColors.accent]),
-                shape: BoxShape.circle,
-              ),
-              child:
-                  const Icon(Icons.favorite, size: 12, color: AppColors.white),
-            ),
-            const SizedBox(width: 6),
-            Text('$likesCount',
-                style: AppTextStyles.interaction.copyWith(
-                    color: AppColors.primary, fontWeight: FontWeight.w600)),
-          ],
-          const Spacer(),
-          if (commentsCount > 0)
-            Text('$commentsCount bình luận',
-                style: AppTextStyles.interaction
-                    .copyWith(color: AppColors.subtitle)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActionButtons(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+      padding: const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 12.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          _ActionButton(
-            icon: _isLiked ? Icons.favorite : Icons.favorite_border,
-            label: 'Thích',
-            color: _isLiked ? AppColors.accent : AppColors.subtitle,
-            onTap: _handleLikePost,
-          ),
-          _ActionButton(
-            icon: Icons.comment_outlined,
-            label: 'Bình luận',
-            color: AppColors.subtitle,
-            onTap: widget.isDetailView
-                ? null
-                : _navigateToDetail, // Tắt nếu đang ở detail view
-          ),
-          _ActionButton(
-            icon: Icons.share_outlined,
-            label: 'Chia sẻ',
-            color: AppColors.subtitle,
-            onTap: _handleSharePost,
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: AppColors.primary.withOpacity(0.15),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ActionButton(
+                  icon: _isLiked ? Icons.favorite : Icons.favorite_border,
+                  count: _likesCount,
+                  color: _isLiked ? AppColors.primary : AppColors.subtitle,
+                  onTap: _handleLikePost,
+                ),
+                Container(
+                  width: 1,
+                  height: 20,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  color: AppColors.primary.withOpacity(0.1),
+                ),
+                _ActionButton(
+                  icon: _isDisliked
+                      ? Icons.thumb_down
+                      : Icons.thumb_down_outlined,
+                  count: _dislikesCount,
+                  color: _isDisliked ? AppColors.danger : AppColors.subtitle,
+                  onTap: _handleDislikePost,
+                ),
+                Container(
+                  width: 1,
+                  height: 20,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  color: AppColors.primary.withOpacity(0.1),
+                ),
+                _ActionButton(
+                  icon: Icons.comment_outlined,
+                  count: widget.post.commentsCount,
+                  color: AppColors.subtitle,
+                  onTap: widget.isDetailView ? null : _navigateToDetail,
+                ),
+                Container(
+                  width: 1,
+                  height: 20,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  color: AppColors.primary.withOpacity(0.1),
+                ),
+                _ActionButton(
+                  icon: Icons.share_outlined,
+                  count: null,
+                  color: AppColors.subtitle,
+                  onTap: _handleSharePost,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -618,27 +668,43 @@ class _HomePostCardState extends State<HomePostCard> {
   Widget _buildMediaGallery(BuildContext context, List<String> mediaUrls) {
     if (mediaUrls.isEmpty) return const SizedBox.shrink();
 
-    // 1 ảnh: Full width
-    if (mediaUrls.length == 1) {
-      return GestureDetector(
-        onTap: widget.isDetailView
-            ? null
-            : _navigateToDetail, // Tắt navigation nếu ở detail view
-        child: Image.network(
-          mediaUrls[0],
+    // Helper để build cached image với giới hạn chiều cao
+    Widget buildCachedImage(String url, {double? height}) {
+      return ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxHeight: 400, // Giới hạn chiều cao tối đa
+        ),
+        child: CachedNetworkImage(
+          imageUrl: url,
+          height: height,
           width: double.infinity,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              height: 200,
-              color: AppColors.imagePlaceholder,
-              child: const Icon(Icons.broken_image,
-                  size: 50, color: AppColors.subtitle),
-            );
-          },
+          placeholder: (context, url) => Container(
+            height: height ?? 200,
+            color: AppColors.imagePlaceholder,
+            child: const Center(
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.primary),
+            ),
+          ),
+          errorWidget: (context, url, error) => Container(
+            height: height ?? 200,
+            color: AppColors.imagePlaceholder,
+            child: const Icon(Icons.broken_image,
+                size: 40, color: AppColors.subtitle),
+          ),
         ),
       );
     }
+
+    // 1 ảnh: Full width
+    if (mediaUrls.length == 1) {
+      return GestureDetector(
+        onTap: widget.isDetailView ? null : _navigateToDetail,
+        child: buildCachedImage(mediaUrls[0]),
+      );
+    }
+
     // 2 ảnh: 2 cột
     if (mediaUrls.length == 2) {
       return GestureDetector(
@@ -648,24 +714,14 @@ class _HomePostCardState extends State<HomePostCard> {
               .map((url) => Expanded(
                     child: AspectRatio(
                       aspectRatio: 1,
-                      child: Image.network(
-                        url,
-                        height: 200,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                              height: 200,
-                              color: AppColors.imagePlaceholder,
-                              child: const Icon(Icons.broken_image,
-                                  size: 40, color: AppColors.subtitle));
-                        },
-                      ),
+                      child: buildCachedImage(url, height: 200),
                     ),
                   ))
               .toList(),
         ),
       );
     }
+
     // 3 ảnh: 1 lớn + 2 nhỏ
     if (mediaUrls.length == 3) {
       return GestureDetector(
@@ -676,18 +732,7 @@ class _HomePostCardState extends State<HomePostCard> {
               flex: 2,
               child: AspectRatio(
                 aspectRatio: 1,
-                child: Image.network(
-                  mediaUrls[0],
-                  height: 300,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                        height: 300,
-                        color: AppColors.imagePlaceholder,
-                        child: const Icon(Icons.broken_image,
-                            color: AppColors.subtitle));
-                  },
-                ),
+                child: buildCachedImage(mediaUrls[0], height: 300),
               ),
             ),
             const SizedBox(width: 2),
@@ -696,34 +741,12 @@ class _HomePostCardState extends State<HomePostCard> {
                 children: [
                   AspectRatio(
                     aspectRatio: 1,
-                    child: Image.network(
-                      mediaUrls[1],
-                      height: 150,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                            height: 150,
-                            color: AppColors.imagePlaceholder,
-                            child: const Icon(Icons.broken_image,
-                                color: AppColors.subtitle));
-                      },
-                    ),
+                    child: buildCachedImage(mediaUrls[1], height: 150),
                   ),
                   const SizedBox(height: 2),
                   AspectRatio(
                     aspectRatio: 1,
-                    child: Image.network(
-                      mediaUrls[2],
-                      height: 150,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                            height: 150,
-                            color: AppColors.imagePlaceholder,
-                            child: const Icon(Icons.broken_image,
-                                color: AppColors.subtitle));
-                      },
-                    ),
+                    child: buildCachedImage(mediaUrls[2], height: 150),
                   ),
                 ],
               ),
@@ -732,6 +755,7 @@ class _HomePostCardState extends State<HomePostCard> {
         ),
       );
     }
+
     // 4+ ảnh: Grid 2x2
     return GestureDetector(
       onTap: widget.isDetailView ? null : _navigateToDetail,
@@ -750,16 +774,7 @@ class _HomePostCardState extends State<HomePostCard> {
           return Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(
-                mediaUrls[index],
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                      color: AppColors.imagePlaceholder,
-                      child: const Icon(Icons.broken_image,
-                          color: AppColors.subtitle));
-                },
-              ),
+              buildCachedImage(mediaUrls[index]),
               if (isLast)
                 Container(
                   color: AppColors.imageOverlay,
@@ -778,40 +793,45 @@ class _HomePostCardState extends State<HomePostCard> {
   }
 }
 
-// Widget helper cho action buttons
+// Widget helper cho action buttons - Hiện icon + số
 class _ActionButton extends StatelessWidget {
   final IconData icon;
-  final String label;
+  final int? count; // Số lượng (like/comment), null nếu không hiện
   final Color color;
   final VoidCallback? onTap; // Nullable để có thể disable
 
   const _ActionButton({
     required this.icon,
-    required this.label,
+    required this.count,
     required this.color,
     this.onTap, // Có thể null
   });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap, // Nếu null thì button sẽ disabled
-        child: Opacity(
-          opacity: onTap == null ? 0.5 : 1.0, // Làm mờ nếu disabled
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 20, color: color),
-                const SizedBox(width: 6),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Opacity(
+        opacity: onTap == null ? 0.5 : 1.0,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: color),
+              if (count != null && count! > 0) ...[
+                const SizedBox(width: 4),
                 Text(
-                  label,
-                  style: AppTextStyles.actionButton.copyWith(color: color),
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
         ),
       ),

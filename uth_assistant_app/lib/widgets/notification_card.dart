@@ -16,7 +16,7 @@ class NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 260,
+      width: 240,
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16.0),
@@ -30,10 +30,10 @@ class NotificationCard extends StatelessWidget {
               topLeft: Radius.circular(16.0),
               topRight: Radius.circular(16.0),
             ),
-            
+
             // --- THAY ĐỔI QUAN TRỌNG TẠI ĐÂY ---
             // Đổi từ Image.network thành Image.asset
-            child: Image.asset( 
+            child: Image.asset(
               imageUrl, // Bây giờ nó đọc từ thư mục assets
               height: 100,
               width: double.infinity,
@@ -43,7 +43,8 @@ class NotificationCard extends StatelessWidget {
                 return Container(
                   height: 90,
                   color: AppColors.divider,
-                  child: const Icon(Icons.broken_image, color: AppColors.hintText),
+                  child:
+                      const Icon(Icons.broken_image, color: AppColors.hintText),
                 );
               },
             ),

@@ -284,22 +284,23 @@ class AppAssets {
   static const String _imagesPicPath = 'assets/images_pic';
 
   // --- API URLS ---
-  static const bool _isLocal = true;
+  static const bool _isLocal = false;
   static const String _prodBaseUrl = 'https://uthstudent.onrender.com/api';
   // TODO: Thay '192.168.1.11' bằng IP Wifi của máy tính bạn
-  static const String _localBaseUrl = 'http://192.168.1.14:5000/api';
+  static const String _localBaseUrl = 'http://192.168.2.4:5000/api';
 
   static final String _apiBaseUrl = _isLocal ? _localBaseUrl : _prodBaseUrl;
 
   static final String authApiBaseUrl = '$_apiBaseUrl/auth';
   static final String postApiBaseUrl = '$_apiBaseUrl/posts';
   static final String commentApiBaseUrl = '$_apiBaseUrl/comments';
-  // SỬA LỖI: uploadApiBaseUrl phải trỏ về local
+  // SỬẠ LỖI: uploadApiBaseUrl phải trỏ về local
   static final String uploadApiBaseUrl = '$_apiBaseUrl/upload';
   static final String documentApiBaseUrl = '$_apiBaseUrl/documents';
   static final String paymentApiBaseUrl = '$_apiBaseUrl/payment';
   static final String pointsApiBaseUrl = '$_apiBaseUrl/points'; // API điểm
   static final String userApiBaseUrl = '$_apiBaseUrl/users';
+  static final String followApiBaseUrl = '$_apiBaseUrl/follow'; // API follow
 
   static const String newsApiUrl = _isLocal
       ? 'http://192.168.2.4:5000/api/uth/thongbaouth'
@@ -430,6 +431,7 @@ class AppAssets {
   static const String iconSettings = '$_imagesPath/icon_settings.svg';
   static const String iconLogout = '$_imagesPath/icon_logout.svg';
   static const String iconApp = '$_imagesPath/app_icon.svg';
+  static const String iconRobot = '$_imagesPath/icon_robot.svg';
 
   // --- ICON TÍNH NĂNG ---
   static const String iconWallet = '$_imagesPath/icon_wallet.svg';

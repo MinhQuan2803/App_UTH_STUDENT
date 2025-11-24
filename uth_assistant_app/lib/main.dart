@@ -17,6 +17,7 @@ import 'models/post_model.dart';
 import 'screens/user_posts_screen.dart';
 import 'screens/wallet_screen.dart'; // 1. Import màn hình mới
 import 'screens/upload_ducument_screen.dart'; // Import màn hình upload document
+import 'screens/webview_screen.dart'; // Import WebViewScreen
 
 // Import service
 import 'services/auth_service.dart';
@@ -112,6 +113,25 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(
             builder: (context) => ProfileScreen(username: username),
           );
+        }
+
+        // Xử lý route cho WebView
+        if (settings.name == '/webview') {
+          final arguments = settings.arguments as Map<String, dynamic>?;
+          if (arguments != null && arguments['url'] is String) {
+            final url = arguments['url'] as String;
+            final title = arguments['title'] as String?;
+            final isPayment = arguments['isPayment'] as bool? ?? false;
+            return MaterialPageRoute(
+              builder: (context) => WebViewScreen(
+                initialUrl: url,
+                title: title,
+                isPayment: isPayment,
+              ),
+            );
+          }
+          debugPrint("Error: /webview missing valid url argument");
+          return null;
         }
 
         // Xử lý route cho Bài viết của Người dùng

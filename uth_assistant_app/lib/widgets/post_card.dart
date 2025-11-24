@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../config/app_theme.dart';
-import '../services/post_service.dart'; // Import service để gọi API Like
-import 'package:flutter/foundation.dart'; // Import kDebugMode
+import '../services/post_service.dart';
+import 'package:flutter/foundation.dart';
 
-// --- CHUYỂN THÀNH STATEFULWIDGET ---
+// --- (LOGIC STATEFUL VẪN GIỮ NGUYÊN) ---
 class PostCard extends StatefulWidget {
-  final String postId; // THÊM: ID bài viết
+  final String postId;
   final String avatarUrl;
   final String name;
   final String time;
@@ -20,7 +20,7 @@ class PostCard extends StatefulWidget {
 
   const PostCard({
     super.key,
-    required this.postId, // Yêu cầu ID
+    required this.postId,
     required this.avatarUrl,
     required this.name,
     required this.time,
@@ -38,10 +38,9 @@ class PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<PostCard> {
-  // Trạng thái cục bộ để cập nhật UI ngay lập tức
   late bool _isLiked;
   late int _likesCount;
-  bool _isLiking = false; // Ngăn spam click
+  bool _isLiking = false;
   final PostService _postService = PostService();
 
   @override
@@ -51,9 +50,25 @@ class _PostCardState extends State<PostCard> {
     _likesCount = widget.likes;
   }
 
-  // --- HÀM XỬ LÝ LIKE ---
+  // [FIX QUAN TRỌNG] Thêm didUpdateWidget để đồng bộ state
+  // khi widget cha (list) refresh lại dữ liệu
+  @override
+  void didUpdateWidget(covariant PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isLiked != oldWidget.isLiked ||
+        widget.likes != oldWidget.likes) {
+      setState(() {
+        _isLiked = widget.isLiked;
+        _likesCount = widget.likes;
+      });
+    }
+  }
+
   Future<void> _handleLike() async {
     if (_isLiking) return;
+
+    final previousLiked = _isLiked;
+    final previousCount = _likesCount;
 
     setState(() {
       _isLiking = true;
@@ -67,33 +82,28 @@ class _PostCardState extends State<PostCard> {
     });
 
     try {
-      // Gọi API (sử dụng PostService từ Canvas)
-      await _postService.likePost(widget.postId, type: 'like');
+      final actionType = _isLiked ? 'like' : 'unlike';
+      await _postService.likePost(widget.postId, type: actionType);
     } catch (e) {
       if (kDebugMode) print("Lỗi khi like: $e");
-      // Nếu API lỗi, đảo ngược lại trạng thái UI
-      setState(() {
-        if (_isLiked) {
-          _likesCount--;
-          _isLiked = false;
-        } else {
-          _likesCount++;
-          _isLiked = true;
-        }
-      });
       if (mounted) {
+        setState(() {
+          _isLiked = previousLiked;
+          _likesCount = previousCount;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.danger),
+          SnackBar(
+              content: Text('Lỗi: ${e.toString()}'),
+              backgroundColor: AppColors.danger),
         );
       }
     } finally {
       if (mounted) {
-         setState(() => _isLiking = false);
+        setState(() => _isLiking = false);
       }
     }
   }
 
-  // --- HÀM HIỂN THỊ MENU BÁO CÁO ---
   void _showMoreOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -102,16 +112,18 @@ class _PostCardState extends State<PostCard> {
           children: [
             ListTile(
               leading: const Icon(Icons.report, color: AppColors.danger),
-              title: const Text('Báo cáo bài viết', style: TextStyle(color: AppColors.danger)),
+              title: const Text('Báo cáo bài viết',
+                  style: TextStyle(color: AppColors.danger)),
               onTap: () {
                 Navigator.of(ctx).pop();
-                // TODO: Gọi API báo cáo
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã gửi báo cáo (chức năng đang phát triển).')),
+                  const SnackBar(
+                      content: Text(
+                          'Đã gửi báo cáo (chức năng đang phát triển).')),
                 );
               },
             ),
-             ListTile(
+            ListTile(
               leading: const Icon(Icons.cancel_outlined, color: AppColors.subtitle),
               title: const Text('Hủy'),
               onTap: () => Navigator.of(ctx).pop(),
@@ -127,14 +139,15 @@ class _PostCardState extends State<PostCard> {
       return widget.backgroundColor!;
     }
     final hash = widget.name.hashCode.abs();
-    return AppColors.postBackgrounds[hash % AppColors.postBackgrounds.length];
+    return AppColors
+        .postBackgrounds[hash % AppColors.postBackgrounds.length];
   }
 
   Widget _buildMediaPreview() {
+    // (Giữ nguyên logic _buildMediaPreview của bạn, nó đã khá tối ưu)
     if (widget.mediaUrls == null || widget.mediaUrls!.isEmpty) {
       return const SizedBox.shrink();
     }
-
     if (widget.mediaUrls!.length == 1) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -142,20 +155,20 @@ class _PostCardState extends State<PostCard> {
           widget.mediaUrls![0],
           fit: BoxFit.cover,
           width: double.infinity,
-          height: 120,
+          height: 120, // [Refactor] Giảm chiều cao ảnh
           errorBuilder: (context, error, stackTrace) {
             return Container(
               height: 120,
-              color: AppColors.imagePlaceholder, // Sử dụng theme
-              child: const Icon(Icons.broken_image, size: 40, color: AppColors.subtitle), // Sử dụng theme
+              color: AppColors.imagePlaceholder,
+              child: const Icon(Icons.broken_image,
+                  size: 40, color: AppColors.subtitle),
             );
           },
         ),
       );
     }
-
     return SizedBox(
-      height: 100,
+      height: 90, // [Refactor] Giảm chiều cao
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: widget.mediaUrls!.length > 3 ? 3 : widget.mediaUrls!.length,
@@ -169,14 +182,15 @@ class _PostCardState extends State<PostCard> {
                   child: Image.network(
                     widget.mediaUrls![index],
                     fit: BoxFit.cover,
-                    width: 80,
-                    height: 100,
+                    width: 70, // [Refactor] Giảm kích thước
+                    height: 90, // [Refactor] Giảm kích thước
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        width: 80,
-                        height: 100,
-                        color: AppColors.imagePlaceholder, // Sử dụng theme
-                        child: const Icon(Icons.broken_image, size: 30, color: AppColors.subtitle), // Sử dụng theme
+                        width: 70,
+                        height: 90,
+                        color: AppColors.imagePlaceholder,
+                        child: const Icon(Icons.broken_image,
+                            size: 30, color: AppColors.subtitle),
                       );
                     },
                   ),
@@ -185,13 +199,13 @@ class _PostCardState extends State<PostCard> {
                   Positioned.fill(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: AppColors.imageOverlay, // Sử dụng theme
+                        color: AppColors.imageOverlay,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
                         child: Text(
                           '+${widget.mediaUrls!.length - 3}',
-                          style: AppTextStyles.imageOverlayText, // Sử dụng theme
+                          style: AppTextStyles.imageOverlayText,
                         ),
                       ),
                     ),
@@ -207,15 +221,17 @@ class _PostCardState extends State<PostCard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      // [Refactor] Giảm padding, đặc biệt là chiều ngang, để nhỏ gọn hơn
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: _getBackgroundColor(),
         borderRadius: BorderRadius.circular(16),
+        // [Refactor] "Điểm nhấn" shadow nhẹ nhàng, hiện đại hơn
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadow.withOpacity(0.5),
-            blurRadius: 8,
-            offset: const Offset(0, 1),
+            color: AppColors.shadow.withOpacity(0.08), // Nhẹ hơn
+            blurRadius: 12, // Mờ hơn
+            offset: const Offset(0, 4), // Đổ bóng xuống dưới
           ),
         ],
       ),
@@ -223,55 +239,82 @@ class _PostCardState extends State<PostCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            widget.content,
-            style: AppTextStyles.postContent.copyWith(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              height: 1.4,
-            ),
-            maxLines: 10,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (widget.mediaUrls != null && widget.mediaUrls!.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _buildMediaPreview(),
-          ],
-          const SizedBox(height: 10),
+          // --- [REFACTOR] 1. HEADER (Thông tin tác giả) ---
           Row(
             children: [
               CircleAvatar(
-                radius: 12,
+                radius: 16, // [Refactor] To hơn một chút (32x32)
                 backgroundImage: NetworkImage(widget.avatarUrl),
+                // Thêm fallback phòng khi ảnh lỗi
+                onBackgroundImageError: (e, s) {},
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  widget.name,
-                  style: AppTextStyles.postMeta.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.text.withOpacity(0.8),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                // [Refactor] Gộp Tên và Meta (Time, Major)
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.name,
+                      style: AppTextStyles.postMeta.copyWith(
+                        fontWeight: FontWeight.w600, // In đậm tên
+                        color: AppColors.text, // Màu text chính
+                        fontSize: 14, // Cỡ chữ 14
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${widget.time} • ${widget.major}', // Hiển thị cả major
+                      style: AppTextStyles.postMeta.copyWith(
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.text.withOpacity(0.7),
+                        fontSize: 12, // Cỡ chữ meta nhỏ
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
+              // [Refactor] Nút "More" gọn gàng hơn
               SizedBox(
-                width: 24,
-                height: 24,
+                width: 28,
+                height: 28,
                 child: IconButton(
                   padding: EdgeInsets.zero,
-                  iconSize: 16,
+                  iconSize: 20,
                   icon: SvgPicture.asset(
                     AppAssets.iconMore,
                     colorFilter: ColorFilter.mode(
                         AppColors.subtitle.withOpacity(0.7), BlendMode.srcIn),
                   ),
-                  onPressed: () => _showMoreOptions(context), // Kích hoạt menu
+                  onPressed: () => _showMoreOptions(context),
                 ),
               )
             ],
           ),
+
+          // --- 2. NỘI DUNG ---
+          const SizedBox(height: 10), // [Refactor] Khoảng cách chuẩn
+          Text(
+            widget.content,
+            style: AppTextStyles.postContent.copyWith(
+              fontSize: 14.5, // [Refactor] Cỡ chữ nhỏ hơn (14.5)
+              fontWeight: FontWeight.w400, // [Refactor] Dùng W400 cho dễ đọc
+              height: 1.35, // [Refactor] Giảm chiều cao dòng
+            ),
+            maxLines: 10,
+            overflow: TextOverflow.ellipsis,
+          ),
+
+          // --- 3. MEDIA (Nếu có) ---
+          if (widget.mediaUrls != null && widget.mediaUrls!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _buildMediaPreview(),
+          ],
+
+          // --- [REFACTOR] 4. TƯƠNG TÁC (Like/Comment) ---
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.start,
@@ -279,11 +322,11 @@ class _PostCardState extends State<PostCard> {
               _InteractionButton(
                 iconAsset: AppAssets.iconHeart,
                 label: _likesCount > 0 ? '$_likesCount' : '',
-                isActive: _isLiked, // Sử dụng state cục bộ
+                isActive: _isLiked,
                 activeColor: AppColors.accent,
-                onTap: _handleLike, // Kích hoạt logic Like
+                onTap: _handleLike,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16), // [Refactor] Tăng khoảng cách
               _InteractionButton(
                 iconAsset: AppAssets.iconComment,
                 label: widget.comments > 0 ? '${widget.comments}' : '',
@@ -301,7 +344,8 @@ class _PostCardState extends State<PostCard> {
   }
 }
 
-// Khôi phục lại Widget InteractionButton
+// --- [REFACTOR] NÚT TƯƠNG TÁC GỌN GÀNG HƠN ---
+// Chỉ Icon và Text, không có background, dùng InkWell
 class _InteractionButton extends StatelessWidget {
   final String iconAsset;
   final String label;
@@ -321,42 +365,35 @@ class _InteractionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isActive ? activeColor : AppColors.subtitle.withOpacity(0.8);
 
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Material(
-        color: AppColors.transparent, // Sử dụng theme
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: (isActive || label.isNotEmpty)
-                ? color.withOpacity(0.1)
-                : AppColors.transparent, // Sử dụng theme
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SvgPicture.asset(
-                iconAsset,
-                width: 16,
-                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-              ),
-              if (label.isNotEmpty) ...[
-                const SizedBox(width: 4),
-                Text(
-                  label,
-                  style: AppTextStyles.interaction.copyWith(
-                    color: color,
-                    fontSize: 12,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                  ),
+      borderRadius: BorderRadius.circular(8), // Bo tròn cho hiệu ứng ripple
+      child: Padding(
+        // [Refactor] Padding nhỏ để tạo vùng nhấn
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(
+              iconAsset,
+              width: 18, // [Refactor] Icon to rõ hơn (18x18)
+              height: 18,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            ),
+            if (label.isNotEmpty) ...[
+              const SizedBox(width: 5), // Khoảng cách 5px
+              Text(
+                label,
+                style: AppTextStyles.interaction.copyWith(
+                  color: color,
+                  fontSize: 13, // [Refactor] Cỡ chữ 13
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                 ),
-              ]
-            ],
-          ),
+              ),
+            ]
+          ],
         ),
       ),
     );
   }
 }
-

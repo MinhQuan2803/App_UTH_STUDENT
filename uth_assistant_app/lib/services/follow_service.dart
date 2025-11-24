@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../config/app_theme.dart'; // Import để dùng AppAssets
 
 /// Service xử lý Follow/Unfollow users
 /// Dựa trên tài liệu API: follow-api-documentation.md
 class FollowService {
   static final String baseUrl =
-      'http://192.168.1.14:5000/api/follow'; // Follow router riêng
+      AppAssets.followApiBaseUrl; // Dùng URL chung từ AppAssets
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   /// Lấy token từ secure storage (phải khớp với key trong auth_service.dart)

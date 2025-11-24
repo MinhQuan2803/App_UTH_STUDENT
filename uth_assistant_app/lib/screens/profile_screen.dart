@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../config/app_theme.dart';
-import '../widgets/profile_list_item.dart';
-import '../widgets/profile_stat_item.dart';
-import '../widgets/custom_button.dart';
-import '../widgets/custom_notification.dart';
 import '../widgets/modern_app_bar.dart';
+import '../widgets/custom_notification.dart';
+import '../widgets/profile_action_button.dart';
+import '../widgets/home_post_card.dart';
+import '../widgets/skeleton_screens.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../services/follow_service.dart';
 import '../services/post_service.dart';
-import '../services/relationship_service.dart';
+import '../models/post_model.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -20,153 +22,169 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with AutomaticKeepAliveClientMixin {
+  // --- Services ---
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
   final FollowService _followService = FollowService();
   final PostService _postService = PostService();
-  final RelationshipService _relationshipService = RelationshipService();
 
+  // --- State ---
   Map<String, dynamic>? _user;
+  List<Post> _posts = [];
   bool _isLoading = true;
   String? _error;
   bool _isFollowLoading = false;
 
-  String? _myUsername; // Username của người đang đăng nhập
+  String? _myUsername;
   String _appBarTitle = 'Hồ sơ';
-  int _actualPostsCount = 0; // Số bài viết thực tế từ API
-  int _actualFollowersCount = 0; // Số followers thực tế từ API
-  int _actualFollowingCount = 0; // Số following thực tế từ API
+
+  // Realtime counters
+  int _actualPostsCount = 0;
+  int _actualFollowersCount = 0;
+  int _actualFollowingCount = 0;
+
+  // Cache flag - chỉ load data lần đầu
+  bool _hasLoadedData = false;
+
+  @override
+  bool get wantKeepAlive => true; // Giữ state khi chuyển tab
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    // Chỉ load data lần đầu, các lần sau sẽ dùng cache
+    if (!_hasLoadedData) {
+      _loadAllData();
+    }
   }
 
   Future<void> _loadAllData({bool forceRefresh = false}) async {
-    await _loadProfile(forceRefresh: forceRefresh);
-    await Future.wait([
-      _loadPostsCount(forceRefresh: forceRefresh),
-      _loadFollowersCount(forceRefresh: forceRefresh),
-      _loadFollowingCount(forceRefresh: forceRefresh),
-    ]);
-  }
+    if (!mounted) return;
 
-  Future<void> _loadProfile({bool forceRefresh = false}) async {
+    // Nếu đã load data và không force refresh thì không load lại
+    if (_hasLoadedData && !forceRefresh) {
+      if (kDebugMode) print('✅ Using cached profile data');
+      return;
+    }
+
     setState(() {
-      _isLoading = true;
+      if (!forceRefresh) _isLoading = true;
       _error = null;
     });
 
     try {
-      Map<String, dynamic> user;
       _myUsername = await _authService.getUsername();
+      final targetUsername = widget.username ?? _myUsername;
 
+      // 1. Lấy thông tin Profile
+      Map<String, dynamic> userProfile;
       if (widget.username != null && widget.username != _myUsername) {
-        // TRƯỜNG HỢP 1: Xem profile người khác
-        user = await _profileService.getUserProfile(widget.username!,
+        userProfile = await _profileService.getUserProfile(widget.username!,
             forceRefresh: forceRefresh);
       } else {
-        // TRƯỜNG HỢP 2: Xem profile của MÌNH
-        user = await _profileService.getMyProfile(forceRefresh: forceRefresh);
+        userProfile =
+            await _profileService.getMyProfile(forceRefresh: forceRefresh);
       }
 
       if (!mounted) return;
+
       setState(() {
-        _user = user;
-        _isLoading = false;
-        // Kiểm tra xem có phải profile của mình không
-        final bool isMyProfile =
-            widget.username == null || widget.username == _myUsername;
+        _user = userProfile;
+        final isMyProfile = targetUsername == _myUsername;
         _appBarTitle = isMyProfile
-            ? 'Hồ sơ của bạn'
-            : 'Hồ sơ của ${user['username'] ?? '...'}';
+            ? 'Hồ sơ của tôi'
+            : (userProfile['username'] ?? 'Hồ sơ');
+
+        // Lấy followers/following count từ profile luôn
+        _actualFollowersCount = userProfile['followerCount'] ?? 0;
+        _actualFollowingCount = userProfile['followingCount'] ?? 0;
       });
 
-      // Tải số bài viết sau khi có username
-      await Future.wait([
-        _loadPostsCount(),
-        _loadFollowersCount(),
-        _loadFollowingCount(),
-      ]);
+      // 2. Chỉ cần lấy posts, followers/following đã có từ profile rồi
+      await _loadPosts(userProfile['username'], forceRefresh: forceRefresh);
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasLoadedData = true; // Đánh dấu đã load xong
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       final errorMessage = e.toString().replaceFirst('Exception: ', '');
-      if (errorMessage.startsWith('401')) {
+      if (errorMessage.contains('401')) {
         _handleSignOut(context, isTokenError: true);
       } else {
         setState(() {
           _error = errorMessage;
           _isLoading = false;
-          _appBarTitle = 'Lỗi';
         });
       }
     }
   }
 
-  Future<void> _loadPostsCount({bool forceRefresh = false}) async {
-    if (_user == null) return;
-    final username = _user!['username'];
+  Future<void> _loadPosts(String? username, {bool forceRefresh = false}) async {
     if (username == null) return;
-
     try {
-      // Lấy tất cả bài viết với limit cao để đếm
+      // PostService.getProfilePosts() đã trả về List<Post> sẵn
       final posts = await _postService.getProfilePosts(
         username: username,
         page: 0,
-        limit: 1000, // Lấy tối đa 1000 bài để đếm
+        limit: 100,
       );
+      if (kDebugMode) {
+        print('📊 Posts loaded: ${posts.length} posts');
+      }
       if (!mounted) return;
       setState(() {
+        _posts = posts;
         _actualPostsCount = posts.length;
       });
     } catch (e) {
-      // Không hiển thị lỗi, giữ giá trị mặc định 0
+      if (kDebugMode) print('❌ Error loading posts: $e');
       if (!mounted) return;
       setState(() {
+        _posts = [];
         _actualPostsCount = 0;
       });
     }
   }
 
-  Future<void> _loadFollowersCount({bool forceRefresh = false}) async {
-    if (_user == null) return;
-    final username = _user!['username'];
-    if (username == null) return;
+  // --- User Actions ---
+
+  Future<void> _handleFollowToggle() async {
+    if (_user == null || _isFollowLoading) return;
+    setState(() => _isFollowLoading = true);
+
+    final userId = _user!['_id'] ?? _user!['id'];
+    final bool currentlyFollowing = _user!['isFollowing'] ?? false;
 
     try {
-      final followers = await _relationshipService.getFollowers(username);
-      if (!mounted) return;
-      setState(() {
-        _actualFollowersCount = followers.length;
-      });
+      if (currentlyFollowing) {
+        await _followService.unfollowUser(userId);
+        if (mounted) {
+          setState(() {
+            _user!['isFollowing'] = false;
+            _actualFollowersCount--;
+          });
+          CustomNotification.success(context, "Đã hủy theo dõi");
+        }
+      } else {
+        await _followService.followUser(userId);
+        if (mounted) {
+          setState(() {
+            _user!['isFollowing'] = true;
+            _actualFollowersCount++;
+          });
+          CustomNotification.success(context, "Đã theo dõi");
+        }
+      }
     } catch (e) {
-      // Không hiển thị lỗi, giữ giá trị mặc định 0
-      if (!mounted) return;
-      setState(() {
-        _actualFollowersCount = 0;
-      });
-    }
-  }
-
-  Future<void> _loadFollowingCount({bool forceRefresh = false}) async {
-    if (_user == null) return;
-    final username = _user!['username'];
-    if (username == null) return;
-
-    try {
-      final following = await _relationshipService.getFollowing(username);
-      if (!mounted) return;
-      setState(() {
-        _actualFollowingCount = following.length;
-      });
-    } catch (e) {
-      // Không hiển thị lỗi, giữ giá trị mặc định 0
-      if (!mounted) return;
-      setState(() {
-        _actualFollowingCount = 0;
-      });
+      if (mounted) CustomNotification.error(context, e.toString());
+    } finally {
+      if (mounted) setState(() => _isFollowLoading = false);
     }
   }
 
@@ -177,316 +195,351 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Navigator.of(context, rootNavigator: true)
           .pushNamedAndRemoveUntil('/login', (route) => false);
       if (isTokenError) {
-        CustomNotification.error(
-          context,
-          'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.',
-        );
+        CustomNotification.error(context, 'Phiên đăng nhập hết hạn.');
       }
     }
   }
 
-  Future<void> _handleFollowToggle() async {
-    if (_user == null || _isFollowLoading) return;
-    final userId = _user!['_id'] ?? _user!['id'];
-    if (userId == null) {
-      CustomNotification.error(context, 'Không tìm thấy ID người dùng');
-      return;
-    }
-    final bool currentlyFollowing = _user!['isFollowing'] ?? false;
-    setState(() => _isFollowLoading = true);
-    try {
-      if (currentlyFollowing) {
-        final result = await _followService.unfollowUser(userId);
-        if (mounted) {
-          setState(() {
-            _user!['isFollowing'] = false;
-            _user!['followerCount'] = (_user!['followerCount'] ?? 1) - 1;
-          });
-          CustomNotification.success(context, result.message);
-        }
-      } else {
-        final result = await _followService.followUser(userId);
-        if (mounted) {
-          setState(() {
-            _user!['isFollowing'] = true;
-            _user!['followerCount'] = (_user!['followerCount'] ?? 0) + 1;
-          });
-          CustomNotification.success(context, result.message);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        CustomNotification.error(
-          context,
-          e.toString().replaceFirst('Exception: ', ''),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isFollowLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Kiểm tra xem màn hình này có phải là tab hay được push
-    // true = được push (xem profile người khác)
-    // false = là 1 tab (xem profile của mình)
-    final bool isPushed = widget.username != null;
-    Widget body = _buildBody();
-
-    if (isPushed) {
-      // 1. Nếu được push -> TẠO Scaffold
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: ModernAppBar(
-          title: _appBarTitle,
-        ),
-        body: body,
-      );
-    } else {
-      // 2. Nếu là 1 tab -> Dùng Column với AppBar hiện đại
-      return Column(
+  void _showMenuBottomSheet(BuildContext context, bool isOwner) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          const SizedBox(height: 12),
           Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primary,
-                  AppColors.primary.withOpacity(0.8),
-                ],
-              ),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 12),
+          if (isOwner) ...[
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text("Chỉnh sửa hồ sơ"),
+              onTap: () async {
+                Navigator.pop(context);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => EditProfileScreen(currentUser: _user!)),
+                );
+                if (result == true) _loadAllData(forceRefresh: true);
+              },
             ),
-            child: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              automaticallyImplyLeading: false, // Không có nút back
-              title: Text(
-                _appBarTitle,
-                style: AppTextStyles.appBarTitle.copyWith(
-                  color: AppColors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              centerTitle: true,
-              iconTheme: const IconThemeData(color: AppColors.white),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title:
+                  const Text("Đăng xuất", style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _handleSignOut(context);
+              },
             ),
-          ),
-          Expanded(child: body),
-        ],
-      );
-    }
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-          child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(_error!,
-            textAlign: TextAlign.center, style: AppTextStyles.errorText),
-      ));
-    }
-    if (_user == null) {
-      return const Center(
-          child: Text('Không có dữ liệu người dùng.',
-              style: AppTextStyles.bodyRegular));
-    }
-
-    // Giao diện đơn giản chỉ hiển thị thông tin
-    return RefreshIndicator(
-      onRefresh: () => _loadAllData(forceRefresh: true),
-      child: ListView(
-        children: [
-          // Thẻ thông tin người dùng
-          _buildSimpleUserInfoCard(context, _user!),
-          const SizedBox(height: 8),
-          // Các hành động
-          _buildInfoTab(context, _user!),
+          ] else ...[
+            ListTile(
+              leading: const Icon(Icons.report_gmailerrorred_outlined),
+              title: const Text("Báo cáo"),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.block, color: Colors.red),
+              title: const Text("Chặn người dùng",
+                  style: TextStyle(color: Colors.red)),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildSimpleUserInfoCard(
-      BuildContext context, Map<String, dynamic> user) {
-    final String username = user['username'] ?? '...';
-    final String avatarPlaceholder =
-        'https://placehold.co/80x80/${AppColors.secondary.value.toRadixString(16).substring(2)}/${AppColors.avatarPlaceholderText.value.toRadixString(16).substring(2)}?text=${username.isNotEmpty ? username[0].toUpperCase() : '?'}';
-    final String avatarUrl = user['avatarUrl'] ?? avatarPlaceholder;
-    final bool isOwner = user['isOwner'] ?? false;
-    final bool isFollowing = user['isFollowing'] ?? false;
+  // --- UI Components ---
 
-    // Ưu tiên số liệu thực tế từ API, fallback về user profile
-    final int followerCount = _actualFollowersCount > 0
-        ? _actualFollowersCount
-        : (user['followerCount'] ?? 0);
-    final int followingCount = _actualFollowingCount > 0
-        ? _actualFollowingCount
-        : (user['followingCount'] ?? 0);
-    final int postsCount =
-        _actualPostsCount > 0 ? _actualPostsCount : (user['postsCount'] ?? 0);
+  Widget _buildUserInfoSection(bool isOwner) {
+    final String? avatarUrl = _user!['avatarUrl'];
+    final String username = _user!['username'] ?? 'User';
+    final String? bio = _user!['bio'];
+    final bool isFollowing = _user!['isFollowing'] ?? false;
 
-    String joinDate = 'Tham gia từ 2024';
-    if (user['createdAt'] != null) {
-      try {
-        final date = DateTime.parse(user['createdAt']);
-        joinDate = 'Tham gia ngày ${date.day}/${date.month}/${date.year}';
-      } catch (e) {}
-    }
+    // Hiển thị "Bạn" thay vì tên nếu là owner
+    final String displayName = isOwner ? username : username;
 
     return Container(
-      width: double.infinity,
-      color: AppColors.white,
-      padding: const EdgeInsets.all(16.0),
+      color: AppColors.background,
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
       child: Column(
         children: [
-          CircleAvatar(radius: 40, backgroundImage: NetworkImage(avatarUrl)),
-          const SizedBox(height: 12),
-          Text(username,
-              style: AppTextStyles.profileName.copyWith(fontSize: 20)),
-          const SizedBox(height: 4),
-          Text(joinDate,
-              style: AppTextStyles.profileMeta
-                  .copyWith(color: AppColors.subtitle)),
-          const SizedBox(height: 16),
-          // Thống kê
+          // Row: Avatar + Stats
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ProfileStatItem(
-                label: 'Bài viết',
-                count: postsCount,
-                onTap: () {
-                  Navigator.pushNamed(context, '/user_posts',
-                      arguments: {'username': username});
-                },
+              // Avatar
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.shade200, width: 1),
+                ),
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                      ? NetworkImage(avatarUrl)
+                      : null,
+                  child: avatarUrl == null || avatarUrl.isEmpty
+                      ? Text(
+                          username.isNotEmpty ? username[0].toUpperCase() : 'U',
+                          style: AppTextStyles.heading1.copyWith(fontSize: 24),
+                        )
+                      : null,
+                ),
               ),
-              Container(width: 1, height: 30, color: AppColors.divider),
-              ProfileStatItem(
-                label: 'Người theo dõi',
-                count: followerCount,
-                onTap: () {
-                  Navigator.pushNamed(context, '/user_list',
-                      arguments: {'username': username, 'type': 'followers'});
-                },
-              ),
-              Container(width: 1, height: 30, color: AppColors.divider),
-              ProfileStatItem(
-                label: 'Đang theo dõi',
-                count: followingCount,
-                onTap: () {
-                  Navigator.pushNamed(context, '/user_list',
-                      arguments: {'username': username, 'type': 'following'});
-                },
+              const SizedBox(width: 4),
+              // Stats
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatItem('$_actualPostsCount', 'Bài viết'),
+                    _buildStatItem('$_actualFollowersCount', 'Người theo dõi'),
+                    _buildStatItem('$_actualFollowingCount', 'Đang theo dõi'),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Nút hành động
-          SizedBox(
-            width: double.infinity,
-            child: isOwner
-                ? CustomButton(
-                    text: 'Chỉnh sửa hồ sơ',
-                    onPressed: () async {
-                      // Điều hướng đến màn hình chỉnh sửa
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EditProfileScreen(
-                            currentUser: user,
-                          ),
-                        ),
-                      );
-                      
-                      // Nếu có thay đổi, reload profile
-                      if (result == true) {
-                        await _loadAllData(forceRefresh: true);
-                      }
-                    },
-                    isPrimary: false,
-                  )
-                : CustomButton(
-                    text: isFollowing ? 'Đang Follow' : 'Follow',
-                    onPressed: _isFollowLoading
-                        ? () {}
-                        : () {
-                            _handleFollowToggle();
-                          },
-                    isPrimary: !isFollowing,
+
+          const SizedBox(height: 2),
+
+          // Name & Bio
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: AppTextStyles.heading1.copyWith(fontSize: 18),
+                ),
+                if (bio != null && bio.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    bio,
+                    style: AppTextStyles.bodyRegular
+                        .copyWith(color: AppColors.text),
                   ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 2),
+
+          // Action Buttons
+          if (isOwner)
+            // Chỉ hiện 1 nút Ví UTH với icon khi xem profile của mình
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/wallet');
+                    },
+                    icon: SvgPicture.asset(
+                      AppAssets.iconWallet,
+                      width: 20,
+                      height: 20,
+                      colorFilter: const ColorFilter.mode(
+                        AppColors.white,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    label: const Text('Ví UTH'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.white,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            // Hiện 2 nút Theo dõi và Nhắn tin cho khách
+            Row(
+              children: [
+                Expanded(
+                  child: ProfileActionButton(
+                    text: isFollowing ? 'Đang theo dõi' : 'Theo dõi',
+                    onPressed: _handleFollowToggle,
+                    type: isFollowing
+                        ? ProfileButtonType.following
+                        : ProfileButtonType.follow,
+                    isLoading: _isFollowLoading,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ProfileActionButton(
+                    text: 'Nhắn tin',
+                    onPressed: () {
+                      CustomNotification.info(
+                          context, "Tính năng nhắn tin đang phát triển");
+                    },
+                    type: ProfileButtonType.secondary,
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 4),
+          const Divider(thickness: 2, color: AppColors.divider),
+
+          // Tiêu đề "Tất cả bài viết"
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 0.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Tất cả bài viết',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.text,
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // Phần hiển thị thông tin & actions
-  Widget _buildInfoTab(BuildContext context, Map<String, dynamic> user) {
-    final bool isOwner = user['isOwner'] ?? false;
-    final String username = user['username'] ?? '';
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(16.0),
-          boxShadow: const [BoxShadow(color: AppColors.shadow, blurRadius: 10)],
+  Widget _buildStatItem(String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: AppTextStyles.bodyBold
+              .copyWith(fontSize: 19, color: AppColors.primary),
+          selectionColor: AppColors.primary,
         ),
-        child: Column(
-          children: [
-            if (isOwner) ...[
-              ProfileListItem(
-                iconPath: AppAssets.iconEdit,
-                title: 'Bài viết của tôi',
-                onTap: () => Navigator.pushNamed(context, '/user_posts',
-                    arguments: {'username': username}),
+        Text(label, style: AppTextStyles.bodyRegular.copyWith(fontSize: 12)),
+      ],
+    );
+  }
+
+  // --- Main Build ---
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Bắt buộc cho AutomaticKeepAliveClientMixin
+
+    final bool isPushed = widget.username != null;
+    final bool isOwner = _user?['isOwner'] ?? false;
+
+    if (_isLoading) {
+      return ProfileSkeletonScreen(
+        appBarTitle: _appBarTitle,
+        automaticallyImplyLeading: isPushed,
+      );
+    }
+
+    if (_error != null || _user == null) {
+      return Scaffold(
+        appBar: ModernAppBar(title: 'Lỗi', automaticallyImplyLeading: isPushed),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_error ?? 'Không tìm thấy thông tin người dùng',
+                  style: AppTextStyles.bodyRegular),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => _loadAllData(forceRefresh: true),
+                child: const Text('Thử lại'),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: ModernAppBar(
+        title: "Hồ sơ của bạn",
+        automaticallyImplyLeading: isPushed,
+        actions: [
+          IconButton(
+            icon: SvgPicture.asset(
+              isOwner ? AppAssets.iconSettings : AppAssets.iconWarning,
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.text,
+                BlendMode.srcIn,
               ),
-              ProfileListItem(
-                iconPath: AppAssets.iconWallet,
-                title: 'Ví UTH',
-                onTap: () => Navigator.pushNamed(context, '/wallet'),
+            ),
+            onPressed: () => _showMenuBottomSheet(context, isOwner),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () => _loadAllData(forceRefresh: true),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // Phần 1: Header Thông tin (Avatar, Bio, Stats...)
+            SliverToBoxAdapter(
+              child: _buildUserInfoSection(isOwner),
+            ),
+
+            // Phần 2: Danh sách bài viết (Grid hoặc List)
+            if (_posts.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.camera_alt_outlined,
+                          size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 6),
+                      Text('Chưa có bài viết nào',
+                          style: AppTextStyles.bodyRegular),
+                    ],
+                  ),
+                ),
+              )
+            else
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: HomePostCard(
+                        post: _posts[index],
+                        username: _myUsername,
+                        onPostDeleted: () => _loadAllData(forceRefresh: true),
+                        onPostUpdated: () => _loadAllData(forceRefresh: true),
+                      ),
+                    );
+                  },
+                  childCount: _posts.length,
+                ),
               ),
-              ProfileListItem(
-                iconPath: AppAssets.iconFileCheck,
-                title: 'Tài liệu của tôi',
-                onTap: () => CustomNotification.info(
-                    context, 'Tính năng đang phát triển'),
-              ),
-              ProfileListItem(
-                iconPath: AppAssets.iconSettings,
-                title: 'Cài đặt',
-                onTap: () => CustomNotification.info(
-                    context, 'Tính năng đang phát triển'),
-              ),
-              ProfileListItem(
-                iconPath: AppAssets.iconLogout,
-                title: 'Đăng xuất',
-                color: AppColors.danger,
-                onTap: () => _handleSignOut(context),
-              ),
-            ] else ...[
-              ProfileListItem(
-                iconPath: AppAssets.iconEdit,
-                title: 'Xem tất cả bài viết',
-                onTap: () => Navigator.pushNamed(context, '/user_posts',
-                    arguments: {'username': username}),
-              ),
-              ProfileListItem(
-                iconData: Icons.flag_outlined,
-                title: 'Báo cáo người dùng',
-                color: AppColors.danger,
-                onTap: () => CustomNotification.info(
-                    context, 'Tính năng đang phát triển'),
-              ),
-            ]
+
+            // Padding bottom an toàn
+            const SliverToBoxAdapter(child: SizedBox(height: 10)),
           ],
         ),
       ),

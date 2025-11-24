@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'dart:convert'; // Import để encode/decode JSON
 import '../main.dart'; // Import để dùng navigatorKey
 import 'post_service.dart'; // Import để fetch post by ID
 
@@ -148,7 +149,7 @@ class FCMService {
       message.notification?.title ?? 'UTH Student',
       message.notification?.body ?? '',
       details,
-      payload: message.data.toString(),
+      payload: jsonEncode(message.data), // Encode data as JSON
     );
   }
 
@@ -159,21 +160,11 @@ class FCMService {
       print('Payload: ${response.payload}');
     }
 
-    // Parse payload và navigate
+    // Parse payload từ JSON string
     if (response.payload != null && response.payload!.isNotEmpty) {
       try {
-        // Payload format: "{type: like, postId: xxx, screen: post_detail}"
-        final data = response.payload!
-            .replaceAll('{', '')
-            .replaceAll('}', '')
-            .split(', ')
-            .fold<Map<String, String>>({}, (map, item) {
-          final parts = item.split(': ');
-          if (parts.length == 2) {
-            map[parts[0].trim()] = parts[1].trim();
-          }
-          return map;
-        });
+        final Map<String, dynamic> data = jsonDecode(response.payload!);
+        if (kDebugMode) print('Parsed data: $data');
 
         _navigateFromNotification(data);
       } catch (e) {

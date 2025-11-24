@@ -14,7 +14,7 @@ class FabWithPrompt extends StatefulWidget {
 }
 
 class _FabWithPromptState extends State<FabWithPrompt> {
-  final String _fullText = 'Bạn có thắc mắc ???\nHỏi UTH ASSISTANT ngay!!!';
+  final String _fullText = 'Bạn có thắc mắc ???\nHỏi Trợ lý ảo UTH ngay!!!';
   String _displayedText = '';
   Timer? _typingTimer;
   Timer? _cursorTimer;
@@ -58,7 +58,7 @@ class _FabWithPromptState extends State<FabWithPrompt> {
 
   void _startCursorAnimation() {
     _cursorTimer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
-       if (!mounted) {
+      if (!mounted) {
         timer.cancel();
         return;
       }
@@ -105,10 +105,7 @@ class _FabWithPromptState extends State<FabWithPrompt> {
                     text: _displayedText,
                     // Sử dụng style từ theme để nhất quán
                     style: AppTextStyles.bodyBold.copyWith(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      height: 1.4
-                    ),
+                        color: AppColors.primary, fontSize: 12, height: 1.4),
                   ),
                   // Hiệu ứng con trỏ chỉ nhấp nháy khi đang gõ
                   if (_displayedText.length < _fullText.length && _showCursor)
@@ -145,14 +142,12 @@ class _FabWithPromptState extends State<FabWithPrompt> {
           backgroundColor: AppColors.primary,
           shape: const CircleBorder(),
           child: SvgPicture.asset(
-            AppAssets.fabBot,
-            // SỬA LỖI: Thêm lại colorFilter để icon có màu trắng
-            colorFilter: const ColorFilter.mode(AppColors.white, BlendMode.srcIn),
-            width: 32,
+            AppAssets.iconRobot,
+            width: 50,
+            height: 50,
           ),
         ),
       ],
     );
   }
 }
-
