@@ -1,9 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
 import '../config/app_theme.dart';
-import '../widgets/custom_button.dart';
-import '../widgets/custom_text_field.dart';
-import '../widgets/custom_notification.dart';
+import '../services/document_service.dart';
+import '../utils/dialog_utils.dart';
 
 class UploadDocumentScreen extends StatefulWidget {
   const UploadDocumentScreen({super.key});
@@ -13,167 +14,382 @@ class UploadDocumentScreen extends StatefulWidget {
 }
 
 class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final DocumentService _docService = DocumentService();
+  
+  // Controllers
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+
+  // State Variables
+  File? _selectedFile;
   String? _fileName;
-  String _selectedFileType = 'PDF'; // Loại file mặc định
+  String _privacy = 'public';
+  bool _isFree = true; 
+  bool _isUploading = false;
+  
+  final currencyFormat = NumberFormat("#,###", "vi_VN");
 
-  // Danh sách loại file cho demo
-  final List<String> _fileTypes = ['PDF', 'DOCX', 'XLSX', 'PPTX'];
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
 
-  // Giả lập chọn file
-  void _simulatePickFile() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Chọn loại file'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: _fileTypes.map((type) {
-              return ListTile(
-                leading: Icon(
-                  type == 'PDF' ? Icons.picture_as_pdf :
-                  type == 'DOCX' ? Icons.description :
-                  type == 'XLSX' ? Icons.table_chart :
-                  Icons.slideshow,
-                  color: AppColors.primary,
-                ),
-                title: Text('File .$type'),
-                onTap: () {
-                  setState(() {
-                    _selectedFileType = type;
-                    _fileName = 'tai-lieu-mau.$type';
-                  });
-                  Navigator.pop(context);
-                },
-              );
-            }).toList(),
-          ),
+  // --- LOGIC ---
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf',],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _selectedFile = File(result.files.single.path!);
+        _fileName = result.files.single.name;
+        if (_titleController.text.isEmpty) {
+          _titleController.text = _fileName!.split('.').first;
+        }
+      });
+    }
+  }
+
+  Future<void> _handleUpload() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn file tài liệu!'), backgroundColor: AppColors.danger),
+      );
+      return;
+    }
+
+    setState(() => _isUploading = true);
+
+    try {
+      int finalPrice = 0;
+      if (!_isFree) {
+        String cleanPrice = _priceController.text.replaceAll('.', '').replaceAll(',', '');
+        finalPrice = int.tryParse(cleanPrice) ?? 0;
+      }
+
+      await _docService.uploadDocument(
+        file: _selectedFile!,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        price: finalPrice,
+        privacy: _privacy,
+      );
+
+      if (mounted) {
+        showAppDialog(
+          context,
+          type: DialogType.success,
+          title: 'Thành công',
+          message: 'Tài liệu đã được đăng tải!',
         );
-      },
-    );
+        await Future.delayed(const Duration(seconds: 1)); 
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppDialog(
+          context,
+          type: DialogType.error,
+          title: 'Lỗi',
+          message: e.toString(),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
-  void _submit() {
-    final price = int.tryParse(_priceController.text);
-
-    if (_titleController.text.isEmpty) {
-      CustomNotification.error(context, 'Vui lòng nhập tiêu đề tài liệu');
-      return;
-    }
-    if (_fileName == null) {
-      CustomNotification.error(context, 'Vui lòng chọn một file để tải lên');
-      return;
-    }
-    if (price == null) {
-      CustomNotification.error(context, 'Vui lòng nhập giá bán hợp lệ (nhập 0 nếu miễn phí)');
-      return;
-    }
-    
-    // TODO: Gọi API Upload Document khi có backend
-    CustomNotification.success(
-      context,
-      'Đã đăng bán: $_fileName\nGiá: ${price == 0 ? "Miễn phí" : "$price điểm"}',
-    );
-    
-    // Quay về màn hình trước
-    Navigator.pop(context);
-  }
+  // --- UI WIDGETS ---
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.primaryLight, // Màu nền xám nhạt sạch sẽ
       appBar: AppBar(
-        title: const Text('Đăng bán Tài liệu', style: AppTextStyles.appBarTitle),
+        title: const Text('Đăng tài liệu', style: AppTextStyles.appBarTitle,),
         backgroundColor: AppColors.white,
+        elevation: 0.5,
+        centerTitle: true,
         iconTheme: const IconThemeData(color: AppColors.text),
-        elevation: 1,
-        shadowColor: AppColors.divider,
+        leading: IconButton(
+          icon: const Icon(Icons.close,),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Ô chọn file
-            GestureDetector(
-              onTap: _simulatePickFile,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.divider),
-                ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Form(
+                key: _formKey,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      _fileName != null ? Icons.insert_drive_file : Icons.cloud_upload_outlined,
-                      size: 48,
-                      color: AppColors.primary,
-                    ),
+                    // 1. File Upload Area
+                    _buildUploadArea(),
                     const SizedBox(height: 12),
-                    Text(
-                      _fileName ?? 'Nhấn để chọn loại file',
-                      style: _fileName != null 
-                             ? AppTextStyles.bodyBold.copyWith(color: AppColors.primary)
-                             : AppTextStyles.bodyRegular.copyWith(color: AppColors.subtitle),
-                      textAlign: TextAlign.center,
+                    
+                    // 2. Info Fields
+                    Text('THÔNG TIN CƠ BẢN', style: AppTextStyles.sectionTitle.copyWith(color: AppColors.subtitle)),
+                    const SizedBox(height: 12),
+                    _buildInputField(
+                      controller: _titleController,
+                      label: 'Tiêu đề tài liệu',
+                      hint: 'Nhập tiêu đề rõ ràng...',
+                      validator: (v) => v!.isEmpty ? 'Không được để trống' : null,
                     ),
-                    if (_fileName != null) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _selectedFileType,
-                          style: AppTextStyles.bodyRegular.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
+                    const SizedBox(height: 16),
+                    _buildInputField(
+                      controller: _descriptionController,
+                      label: 'Mô tả',
+                      hint: 'Giới thiệu ngắn gọn về tài liệu...',
+                      maxLines: 3,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // 3. Settings Area
+                    Text('CÀI ĐẶT', style: AppTextStyles.sectionTitle.copyWith(color: AppColors.subtitle)),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.divider),
                       ),
-                    ],
+                      child: Column(
+                        children: [
+                          _buildPriceOption(),
+                          if (!_isFree) ...[
+                            const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1, color: AppColors.divider)),
+                            _buildPriceInput(),
+                          ],
+                          const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1, color: AppColors.divider)),
+                          _buildPrivacyDropdown(),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            // Ô nhập liệu
-            CustomTextField(
-              controller: _titleController,
-              hintText: 'Tiêu đề tài liệu *',
+          ),
+          
+          // Bottom Button
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              border: Border(top: BorderSide(color: AppColors.divider)),
             ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              controller: _descriptionController,
-              hintText: 'Mô tả (ví dụ: môn học, giảng viên...)',
-              maxLines: 4, // Cho phép nhập nhiều dòng
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _isUploading ? null : _handleUpload,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                  textStyle: AppTextStyles.button,
+                ),
+                child: _isUploading
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('ĐĂNG TÀI LIỆU'),
+              ),
             ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              controller: _priceController,
-              hintText: 'Đặt giá (Điểm UTH) * (Nhập 0 nếu miễn phí)',
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly], // Chỉ cho nhập số
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadArea() {
+    bool hasFile = _selectedFile != null;
+    return GestureDetector(
+      onTap: _pickFile,
+      child: Container(
+        height: 160,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: hasFile ? AppColors.primaryLight : AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: hasFile ? AppColors.primary : AppColors.divider,
+            width: hasFile ? 1.5 : 1,
+            style: hasFile ? BorderStyle.solid : BorderStyle.solid, 
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: hasFile ? AppColors.white : AppColors.background,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                hasFile ? Icons.check_rounded : Icons.cloud_upload_outlined,
+                size: 32,
+                color: hasFile ? AppColors.primary : AppColors.subtitle,
+              ),
             ),
-            const SizedBox(height: 32),
-            CustomButton(
-              text: 'Đăng bán',
-              onPressed: _submit,
-              isPrimary: true,
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                _fileName ?? 'Chạm để chọn file (PDF, DOC)',
+                textAlign: TextAlign.center,
+                style: hasFile 
+                  ? AppTextStyles.bodyBold.copyWith(color: AppColors.primary)
+                  : AppTextStyles.bodyRegular,
+                maxLines: 1, 
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTextStyles.bodyBold.copyWith(fontSize: 13)),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          validator: validator,
+          style: AppTextStyles.bodyRegular.copyWith(color: AppColors.text),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: AppTextStyles.hintText,
+            filled: true,
+            fillColor: AppColors.inputBackground,
+            contentPadding: const EdgeInsets.all(16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.divider),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.divider),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.danger),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPriceOption() {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _isFree = true),
+            child: _buildRadioItem('Miễn phí', _isFree),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _isFree = false),
+            child: _buildRadioItem('Có phí', !_isFree),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRadioItem(String text, bool isSelected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: isSelected ? AppColors.primaryLight : AppColors.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
+          color: isSelected ? AppColors.primary : AppColors.subtitle,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriceInput() {
+    return Row(
+      children: [
+        const Icon(Icons.monetization_on_outlined, color: AppColors.subtitle, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: TextFormField(
+            controller: _priceController,
+            keyboardType: TextInputType.number,
+            style: AppTextStyles.bodyBold.copyWith(color: AppColors.primary),
+            decoration: const InputDecoration(
+              hintText: 'Nhập số điểm (VD: 100)',
+              border: InputBorder.none,
+              isDense: true,
+            ),
+          ),
+        ),
+        const Text('điểm', style: AppTextStyles.bodyRegular),
+      ],
+    );
+  }
+
+  Widget _buildPrivacyDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _privacy,
+      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.subtitle),
+      decoration: const InputDecoration(
+        border: InputBorder.none,
+        contentPadding: EdgeInsets.zero,
+        prefixIcon: Icon(Icons.lock_outline, color: AppColors.subtitle, size: 20),
+        prefixIconConstraints: BoxConstraints(minWidth: 32),
+      ),
+      items: const [
+        DropdownMenuItem(value: 'public', child: Text('Công khai', style: AppTextStyles.bodyRegular)),
+        DropdownMenuItem(value: 'private', child: Text('Riêng tư', style: AppTextStyles.bodyRegular)),
+      ],
+      onChanged: (val) => setState(() => _privacy = val!),
     );
   }
 }

@@ -11,7 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-    
+  screen_protector: 1.4.7
+  file_picker: ^8.0.0  # Để chọn file từ máy
+  http_parser: ^4.0.2  # Để định nghĩa MediaType (pdf/doc)
   flutter_svg: ^2.0.10+1
   flutter_secure_storage: ^9.0.0
   image_picker: ^1.0.7
@@ -34,7 +36,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   # Tôi đã sửa lại phiên bản này về ^4.0.0 (phổ biến)
   # Nếu bạn cố ý dùng ^5.0.0, bạn có thể sửa lại
   flutter_lints: ^4.0.0

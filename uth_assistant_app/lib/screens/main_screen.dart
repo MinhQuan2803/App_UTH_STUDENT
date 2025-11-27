@@ -5,6 +5,8 @@ import 'home_screen.dart';
 import 'chatbot_screen.dart';
 import 'document_screen.dart';
 import 'profile_screen.dart';
+import '../config/app_theme.dart'; // Import để lấy màu AppColors
+import 'upload_document_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -22,32 +24,30 @@ class _MainScreenState extends State<MainScreen> {
   late final List<Widget> _screens = [
     HomeScreen(key: _homeScreenKey, pageController: _pageController),
     const ChatbotScreen(),
-    const DocumentScreen(),
+    // DocumentScreen không cần lo về FAB nữa
+    const DocumentScreen(), 
     const ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
     if (index == _selectedNavIndex) return;
 
-    // CẬP NHẬT: Xử lý sự kiện cho nút "Thêm"
+    // Xử lý nút "Thêm" (Index 2 trên NavBar)
     if (index == 2) {
-      // Mở màn hình tạo bài viết dưới dạng một trang mới
       Navigator.pushNamed(context, '/add_post').then((result) {
-        // Nếu đăng bài thành công, refresh home screen
         if (result == true) {
-          // Gọi refresh method của HomeScreen thông qua GlobalKey
           final homeScreenState = _homeScreenKey.currentState;
           if (homeScreenState != null) {
             (homeScreenState as dynamic).refreshPosts();
           }
         }
       });
-      return; // Không chuyển tab trong PageView
+      return; 
     }
 
-    // Các logic còn lại không đổi
     _handleNavChange(index);
 
+    // Map index NavBar -> PageView
     int pageIndex = index > 2 ? index - 1 : index;
 
     _pageController.animateToPage(
@@ -63,35 +63,33 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _handleNavChange(int newNavIndex) {
-    final wasFabHidden = _selectedNavIndex == 1;
-    final isFabHidden = newNavIndex == 1;
-
     setState(() {
       _selectedNavIndex = newNavIndex;
-      if (wasFabHidden && !isFabHidden) {
+      // Reset chatbot nếu quay lại các tab Home/Profile
+      if (newNavIndex == 0 || newNavIndex == 4) {
         _fabKeyCounter++;
       }
     });
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  // Hàm xử lý khi bấm nút Đăng tài liệu
+  void _onUploadDocumentPressed() {
+    Navigator.push(
+       context, 
+       MaterialPageRoute(builder: (_) => const UploadDocumentScreen())
+     ).then((result) {
+        // Có thể cần dùng EventBus hoặc GlobalKey để báo cho DocumentScreen reload
+        // Nhưng đơn giản nhất là DocumentScreen tự reload khi chuyển tab hoặc pull-to-refresh
+     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // THÊM DÒNG NÀY: Cho phép body tràn xuống dưới thanh điều hướng
-      // Điều này quan trọng để MainNavBar (có background trắng) hiển thị đè lên trên
-      // và phần background trắng đó sẽ che đi thanh điều hướng hệ thống trong suốt.
-      extendBody: true, 
-      
+      extendBody: true,
       body: PageView(
         controller: _pageController,
-        physics:
-            const NeverScrollableScrollPhysics(), // Tắt vuốt để chuyển trang
+        physics: const NeverScrollableScrollPhysics(),
         onPageChanged: _onPageChanged,
         children: _screens,
       ),
@@ -99,15 +97,31 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: _selectedNavIndex,
         onTap: _onItemTapped,
       ),
-      floatingActionButton: _selectedNavIndex == 1
-          ? null
-          : FabWithPrompt(
-              key: ValueKey<int>(_fabKeyCounter),
-              onTap: () {
-                _onItemTapped(1);
-              },
-            ),
+      
+      // --- LOGIC HIỂN THỊ FAB THEO TAB ---
+      floatingActionButton: _buildFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  Widget? _buildFab() {
+    // 1. Tab Chatbot (index 1): Ẩn tất cả
+    if (_selectedNavIndex == 1) return null;
+
+    // 2. Tab Tài liệu (index 3): Hiện nút Đăng bài
+    if (_selectedNavIndex == 3) {
+      return FloatingActionButton.extended(
+        onPressed: _onUploadDocumentPressed,
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.upload_file, color: Colors.white),
+        label: const Text("Đăng bài", style: TextStyle(color: Colors.white)),
+      );
+    }
+
+    // 3. Các Tab còn lại (Home, Profile): Hiện Trợ lý ảo
+    return FabWithPrompt(
+      key: ValueKey<int>(_fabKeyCounter),
+      onTap: () => _onItemTapped(1),
     );
   }
 }

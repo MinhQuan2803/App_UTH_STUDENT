@@ -5,7 +5,7 @@ import '../config/app_theme.dart';
 // Import các widget card cần tái sử dụng
 import '../widgets/notification_card.dart';
 import '../widgets/home_post_card.dart'; // SỬ DỤNG WIDGET MỚI
-import '../widgets/document_list_item.dart';
+
 // Import Service và Utility
 import '../services/news_service.dart';
 import '../services/post_service.dart' hide Post; // SỬA LỖI: Thêm 'hide Post'
@@ -369,12 +369,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                 if (item is Map<String, dynamic>) {
                   return Padding(
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                    child: DocumentListItem(
-                      fileType: item['fileType'] ?? 'N/A',
-                      title: item['title'] ?? 'N/A',
-                      uploader: item['uploader'] ?? 'N/A',
-                      price: item['price'] ?? 0,
-                    ),
+                  
                   );
                 }
                 return const SizedBox.shrink();

@@ -7,6 +7,8 @@ import '../services/payment_service.dart';
 import '../models/point_history.dart';
 import '../models/payment_order.dart';
 import '../utils/dialog_utils.dart';
+import '../services/transaction_service.dart'; // Import service mới
+import '../models/transaction_model.dart';     // Import model mới
 
 class TransactionHistoryScreen extends StatefulWidget {
   const TransactionHistoryScreen({super.key});
