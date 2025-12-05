@@ -18,6 +18,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   final ChatbotService _chatbotService = ChatbotService();
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  
+  // Danh sách tin nhắn
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
 
@@ -35,35 +37,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 
   void _addWelcomeMessage() {
-    // Welcome message
     _messages.add(ChatMessage(
-      text:
-          'Chào bạn! Tôi là UTH Assistant. Tôi có thể giúp gì cho bạn hôm nay?',
+      text: 'Chào bạn! Tôi là UTH Assistant. Tôi có thể giúp gì cho bạn hôm nay?',
       isFromUser: false,
-    ));
-
-    // Sample user question
-    _messages.add(ChatMessage(
-      text: 'Thời gian đăng ký học phần là khi nào?',
-      isFromUser: true,
-    ));
-
-    // Sample bot response with links and suggestions
-    _messages.add(ChatMessage(
-      text:
-          'Ở học kì hiện tại (học kì 1 năm học 2025-2026) thì thời gian là từ ngày 30/08 đến ngày 03/09, để biết thêm chi tiết vui lòng truy cập thông báo bên dưới.',
-      isFromUser: false,
-      links: [
-        ChatLink(
-          title: 'thong_bao_thoi_gian_dangki_hoc_phan',
-          url:
-              'https://daotao.ut.edu.vn/ve-viec-dang-ky-hoc-phan-hoc-ky-1-nam-hoc-2025-2026',
-        ),
-      ],
-      suggestions: [
-        'Cách thức đăng kí học phần?',
-        'Hạn nộp học phí?',
-      ],
     ));
   }
 
@@ -71,20 +47,23 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     if (text.trim().isEmpty) return;
 
     final userMessage = ChatMessage.fromUser(text);
+    
     setState(() {
       _messages.add(userMessage);
       _textController.clear();
       _isLoading = true;
+      // Thêm tin nhắn typing giả lập
       _messages.add(ChatMessage.typing());
     });
 
     _scrollToBottom();
 
     try {
+      // Service đã xử lý việc parse JSON phức tạp thành ChatMessage chuẩn
       final botResponse = await _chatbotService.sendMessage(text);
 
       setState(() {
-        _messages.removeLast(); // Remove typing indicator
+        _messages.removeLast(); // Xóa typing
         _messages.add(botResponse);
         _isLoading = false;
       });
@@ -92,21 +71,16 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       _scrollToBottom();
     } catch (e) {
       setState(() {
-        _messages.removeLast(); // Remove typing indicator
+        _messages.removeLast(); // Xóa typing
         _messages.add(ChatMessage(
-          text:
-              'Xin lỗi, đã có lỗi xảy ra: ${e.toString().replaceFirst('Exception: ', '')}',
+          text: 'Xin lỗi, tôi đang gặp sự cố kết nối. Vui lòng thử lại sau.',
           isFromUser: false,
         ));
         _isLoading = false;
       });
-
-      if (mounted) {
-        CustomNotification.error(
-          context,
-          e.toString().replaceFirst('Exception: ', ''),
-        );
-      }
+      
+      // Log lỗi chi tiết ra console thay vì hiển thị popup gây phiền
+      debugPrint('Chat Error: $e'); 
     }
   }
 
@@ -136,7 +110,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.transparent ,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -154,9 +128,11 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             radius: 18,
             backgroundColor: AppColors.secondary,
             child: SvgPicture.asset(
-              AppAssets.iconRobot,
+              AppAssets.iconRobot, // Đảm bảo asset này tồn tại
               width: 26,
               height: 26,
+              // Fallback icon nếu không có SVG
+              placeholderBuilder: (context) => const Icon(Icons.smart_toy, color: Colors.white),
             ),
           ),
         ),
@@ -177,24 +153,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             icon: const Icon(Icons.help_outline, color: Colors.white, size: 18),
             label: const Text(
               'Thông tin',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
             ),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
           ),
           const SizedBox(width: 4),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: AppColors.divider,
-            height: 1,
-          ),
-        ),
       ),
       body: Column(
         children: [
@@ -208,16 +175,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Message bubble (text answer)
+                    // Hiển thị bong bóng chat (Text)
                     ChatBubble(message: message),
 
-                    // Links - hiển thị riêng nếu có
+                    // Hiển thị Links (Nếu service đã parse ra List<ChatLink>)
                     if (message.links != null && message.links!.isNotEmpty)
                       ...message.links!.map((link) => ChatLinkCard(link: link)),
 
-                    // Suggestions - hiển thị riêng nếu có
-                    if (message.suggestions != null &&
-                        message.suggestions!.isNotEmpty)
+                    // Hiển thị Gợi ý (Nếu service đã parse ra List<String>)
+                    if (message.suggestions != null && message.suggestions!.isNotEmpty)
                       ChatSuggestions(
                         suggestions: message.suggestions!,
                         onSuggestionTap: (suggestion) {
@@ -241,6 +207,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 }
 
+// Widget Input Area giữ nguyên như cũ, chỉ tối ưu nhẹ
 class _ChatInputArea extends StatelessWidget {
   final TextEditingController controller;
   final Function(String) onSend;
@@ -258,80 +225,48 @@ class _ChatInputArea extends StatelessWidget {
       padding: const EdgeInsets.all(6.0),
       decoration: BoxDecoration(
         color: AppColors.white,
-        border: Border(
-          top: BorderSide(color: AppColors.divider, width: 1),
-        ),
+        border: Border(top: BorderSide(color: AppColors.divider, width: 1)),
       ),
       child: SafeArea(
+        bottom: true,
         child: Row(
           children: [
-            // Add button
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: Icon(Icons.add_circle_outline, color: AppColors.subtitle),
-                onPressed: () {},
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Input field
+            const SizedBox(width: 12),
             Expanded(
               child: Container(
-                height: 48,
+                height: 60,
                 decoration: BoxDecoration(
                   color: AppColors.inputBackground,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: AppColors
-                        .primary, // hoặc AppColors.divider nếu muốn nhẹ hơn
-                    width: 1.5,
-                  ),
+                  border: Border.all(color: AppColors.primary, width: 1.5),
                 ),
                 child: TextField(
                   controller: controller,
                   enabled: !isLoading,
+                  textInputAction: TextInputAction.send,
                   decoration: InputDecoration(
                     hintText: 'Nhập câu hỏi...',
-                    hintStyle: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.hintText,
-                    ),
+                    hintStyle: TextStyle(fontSize: 15, color: AppColors.hintText),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                   ),
                   onSubmitted: (text) => onSend(text),
                 ),
               ),
             ),
             const SizedBox(width: 8),
-            // Send button
             Container(
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: isLoading
-                    ? AppColors.primary.withOpacity(0.5)
-                    : AppColors.primary,
+                color: isLoading ? AppColors.primary.withOpacity(0.5) : AppColors.primary,
                 shape: BoxShape.circle,
               ),
               child: IconButton(
                 icon: isLoading
                     ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppColors.white),
-                        ),
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.white)),
                       )
                     : Icon(Icons.send, color: AppColors.white, size: 20),
                 onPressed: isLoading ? null : () => onSend(controller.text),

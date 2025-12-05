@@ -45,7 +45,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
 
   // --- LOGIC TÍNH SỐ TRANG XEM TRƯỚC (THEO YÊU CẦU MỚI) ---
   int _calculatePreviewCount(DocumentModel doc) {
-    if (doc.isFullAccess) return doc.totalPages; // Đã mua thì xem hết
+ 
 
     if (doc.totalPages < 5) {
       return 0; // Nhỏ hơn 5 trang -> Không cho xem trước
@@ -345,7 +345,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
               // TRƯỜNG HỢP: < 5 trang và chưa mua -> Không cho xem trước
               SliverToBoxAdapter(
                 child: Container(
-                  height: 180,
+                  height: 190,
                   margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
@@ -381,7 +381,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
             if (!doc.isFullAccess && previewPages > 0)
               SliverToBoxAdapter(
                 child: Container(
-                  height: 150,
+                  height: 100,
                   margin: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.grey[50],
@@ -404,7 +404,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                 ),
               ),
               
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            const SliverToBoxAdapter(child: SizedBox(height: 120)),
           ],
         ),
 
@@ -412,7 +412,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
         Positioned(
           bottom: 0, left: 0, right: 0,
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],

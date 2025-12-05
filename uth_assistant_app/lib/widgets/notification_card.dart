@@ -20,7 +20,6 @@ class NotificationCard extends StatelessWidget {
       height: 140,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.0),
-       
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),

@@ -12,6 +12,8 @@ import 'profile_service.dart';
 import 'post_service.dart';
 import 'news_service.dart';
 
+enum RefreshResult { success, failed, networkError }
+
 class AuthService {
   static final String _baseUrl = AppAssets.authApiBaseUrl;
   final _storage = const FlutterSecureStorage();
@@ -20,10 +22,11 @@ class AuthService {
   static const String _refreshTokenKey = 'refreshToken';
   static const String _usernameKey = 'username';
 
-  static const _timeoutDuration = Duration(seconds: 30);
-
   // ... (Các hàm signUp, signIn giữ nguyên) ...
-  
+
+  static const _timeoutDuration = Duration(seconds: 90);
+
+  // --- SIGN UP ---
   Future<Map<String, dynamic>> signUp({
     required String username,
     required String email,
@@ -44,11 +47,19 @@ class AuthService {
 
       final body = jsonDecode(response.body);
       final message = body['message'] ?? 'Không có thông báo từ server';
-
       final int statusCode = response.statusCode;
+
+      if (kDebugMode) {
+        print('=== SIGNUP RESPONSE ===');
+        print('Status Code: $statusCode');
+        print('Message: $message');
+        print('Full Body: $body');
+      }
+
       if (statusCode == 201 || statusCode == 204) {
         return {'statusCode': 201, 'message': message};
       } else {
+        // Backend trả lỗi (400, 409, 500...) → Hiển thị message từ server
         return {'statusCode': statusCode, 'message': message};
       }
     } on TimeoutException {
@@ -56,6 +67,7 @@ class AuthService {
     } on SocketException {
       return {'statusCode': 503, 'message': 'Lỗi kết nối mạng.'};
     } catch (e) {
+      if (kDebugMode) print('SignUp Exception: $e');
       return {
         'statusCode': 500,
         'message': 'Lỗi không xác định: ${e.toString()}'
@@ -63,6 +75,8 @@ class AuthService {
     }
   }
 
+  // --- SIGN IN ---
+  // --- SIGN IN ---
   Future<Map<String, dynamic>> signIn({
     required String email,
     required String password,
@@ -86,30 +100,16 @@ class AuthService {
         final accessToken = body['accessToken'];
         final refreshToken = body['refreshToken'];
 
-        if (kDebugMode) {
-          print('=== LOGIN RESPONSE ===');
-          print('Has accessToken: ${accessToken != null}');
-          print('Has refreshToken: ${refreshToken != null}');
-        }
-
         if (accessToken != null && accessToken is String) {
           Map<String, dynamic> decodedToken;
           try {
             decodedToken = JwtDecoder.decode(accessToken);
           } catch (decodeError) {
-            if (kDebugMode) print('✗ Token decode error: $decodeError');
-            return {
-              'success': false,
-              'message': 'Lỗi giải mã token: ${decodeError.toString()}'
-            };
-          }
-
-          if (kDebugMode) {
-            print('=== DECODED TOKEN ===');
-            print(decodedToken);
+            return {'success': false, 'message': 'Lỗi giải mã token'};
           }
 
           final String? userId = decodedToken['userId'];
+          // Giữ nguyên logic lấy username cũ của bạn
           final String? username = decodedToken['username'];
 
           try {
@@ -117,25 +117,18 @@ class AuthService {
 
             if (refreshToken != null && refreshToken is String) {
               await _storage.write(key: _refreshTokenKey, value: refreshToken);
-              if (kDebugMode) print('✓ Saved refresh token');
             } else {
               await _storage.write(key: _refreshTokenKey, value: accessToken);
-              if (kDebugMode)
-                print(
-                    '⚠ No separate refreshToken, using accessToken as fallback');
             }
 
             if (userId != null && userId.isNotEmpty) {
               await _storage.write(key: 'userId', value: userId);
-              if (kDebugMode) print('✓ Saved userId: $userId');
             }
 
+            // Logic fallback username cũ của bạn (giữ nguyên để app hiển thị đúng)
             if (username != null && username.isNotEmpty) {
               await _storage.write(key: _usernameKey, value: username);
-              if (kDebugMode) print('✓ Saved username from TOKEN: $username');
             } else {
-              if (kDebugMode)
-                print('⚠ Token không chứa username, thử parse từ message...');
               if (message != null && message.contains('đăng nhập thành công')) {
                 try {
                   final RegExp regex =
@@ -146,31 +139,16 @@ class AuthService {
                     if (parsedUsername != null) {
                       await _storage.write(
                           key: _usernameKey, value: parsedUsername);
-                      if (kDebugMode)
-                        print('✓ Saved username from MESSAGE: $parsedUsername');
                     }
-                  } else {
-                    if (kDebugMode)
-                      print('✗ KHÔNG THỂ PARSE USERNAME từ message: $message');
                   }
                 } catch (e) {
-                  if (kDebugMode) print('✗ LỖI khi parse username: $e');
+                  if (kDebugMode) print('Parse username error: $e');
                 }
-              } else {
-                if (kDebugMode)
-                  print(
-                      '✗ KHÔNG THỂ LẤY USERNAME (Token và Message đều không có)');
               }
             }
           } catch (storageError) {
-            if (kDebugMode) print('✗ Storage error: $storageError');
-            return {
-              'success': false,
-              'message':
-                  'Lỗi lưu thông tin đăng nhập: ${storageError.toString()}'
-            };
+            // Ignore storage error
           }
-
           return {'success': true, 'message': message};
         } else {
           return {
@@ -182,25 +160,13 @@ class AuthService {
         return {'success': false, 'message': message};
       }
     } on TimeoutException {
-      if (kDebugMode) print('Signin Timeout');
       return {
         'success': false,
-        'message': 'Máy chủ phản hồi quá chậm. Vui lòng thử lại.'
+        'message': 'Máy chủ đang khởi động, vui lòng thử lại.'
       };
     } on SocketException {
-      if (kDebugMode) print('Signin Socket Error');
-      return {
-        'success': false,
-        'message': 'Lỗi kết nối mạng. Kiểm tra Internet của bạn.'
-      };
-    } on FormatException catch (e) {
-      if (kDebugMode) print('Signin Format Error: $e');
-      return {
-        'success': false,
-        'message': 'Lỗi dữ liệu từ server. Vui lòng thử lại sau.'
-      };
+      return {'success': false, 'message': 'Lỗi kết nối mạng.'};
     } catch (e) {
-      if (kDebugMode) print('Signin Error: $e');
       return {
         'success': false,
         'message': 'Đăng nhập thất bại: ${e.toString()}'
@@ -220,16 +186,96 @@ class AuthService {
       await _storage.delete(key: _usernameKey);
       await _storage.delete(key: 'userId');
 
-      if (kDebugMode) print('✓ All caches and tokens cleared');
-      
-      // Điều hướng về màn hình Login bằng Global Key
       navigatorKey.currentState?.pushNamedAndRemoveUntil(
-        '/login', 
+        '/login',
         (route) => false,
       );
-      
     } catch (e) {
-      if (kDebugMode) print('✗ Signout Error: $e');
+      if (kDebugMode) print('Signout Error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/verify-code'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email,
+              'code': code,
+            }),
+          )
+          .timeout(_timeoutDuration);
+
+      final body = jsonDecode(response.body);
+      final message = body['message'] ?? 'Không có phản hồi';
+      final bool success = body['success'] ?? false;
+
+      if (kDebugMode) {
+        print('=== VERIFY CODE RESPONSE ===');
+        print('Status: ${response.statusCode}');
+        print('Success: $success');
+        print('Message: $message');
+      }
+
+      // Backend trả về status 200 khi thành công, 400 khi lỗi
+      if (response.statusCode == 200 && success) {
+        return {'success': true, 'message': message};
+      } else {
+        return {'success': false, 'message': message};
+      }
+    } on TimeoutException {
+      return {'success': false, 'message': 'Máy chủ phản hồi quá chậm.'};
+    } on SocketException {
+      return {'success': false, 'message': 'Lỗi kết nối mạng.'};
+    } catch (e) {
+      if (kDebugMode) print('Verify Error: $e');
+      return {'success': false, 'message': 'Lỗi xác thực: ${e.toString()}'};
+    }
+  }
+
+  Future<Map<String, dynamic>> resendVerification({
+    required String email,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/resend-verification'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email,
+            }),
+          )
+          .timeout(_timeoutDuration);
+
+      final body = jsonDecode(response.body);
+      final message = body['message'] ?? 'Không có phản hồi';
+      final bool success = body['success'] ?? false;
+
+      if (kDebugMode) {
+        print('=== RESEND VERIFICATION RESPONSE ===');
+        print('Status: ${response.statusCode}');
+        print('Success: $success');
+        print('Message: $message');
+      }
+
+      // Backend trả về status 200 cho cả thành công và một số trường hợp đặc biệt
+      if (response.statusCode == 200 && success) {
+        return {'success': true, 'message': message};
+      } else {
+        return {'success': false, 'message': message};
+      }
+    } on TimeoutException {
+      return {'success': false, 'message': 'Máy chủ phản hồi quá chậm.'};
+    } on SocketException {
+      return {'success': false, 'message': 'Lỗi kết nối mạng.'};
+    } catch (e) {
+      if (kDebugMode) print('Resend Error: $e');
+      return {'success': false, 'message': 'Lỗi gửi mã: ${e.toString()}'};
     }
   }
 
@@ -251,36 +297,23 @@ class AuthService {
   }
 
   // ... (Hàm refreshAccessToken giữ nguyên) ...
-  Future<bool> refreshAccessToken() async {
+
+  Future<RefreshResult> refreshAccessToken() async {
     try {
       final refreshToken = await getRefreshToken();
-
       if (refreshToken == null) {
-        if (kDebugMode) print('✗ No refresh token available');
-        return false;
+        return RefreshResult.failed;
       }
 
-      if (kDebugMode) {
-        print('=== REFRESHING ACCESS TOKEN ===');
-        print('Refresh token exists: ${refreshToken.substring(0, 20)}...');
-      }
+      if (kDebugMode) print('=== REFRESHING TOKEN (Wait 90s) ===');
 
       final response = await http
           .post(
             Uri.parse('$_baseUrl/refresh'),
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'refreshToken': refreshToken, 
-            }),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'refreshToken': refreshToken}),
           )
-          .timeout(_timeoutDuration);
-
-      if (kDebugMode) {
-        print('Refresh response status: ${response.statusCode}');
-        print('Refresh response body: ${response.body}');
-      }
+          .timeout(_timeoutDuration); // 90s timeout
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -288,37 +321,26 @@ class AuthService {
 
         if (newAccessToken != null) {
           await _storage.write(key: _tokenKey, value: newAccessToken);
-
           final newRefreshToken = body['refreshToken'];
           if (newRefreshToken != null) {
             await _storage.write(key: _refreshTokenKey, value: newRefreshToken);
-            if (kDebugMode) print('✓ New refresh token also saved');
           }
-
-          if (kDebugMode) print('✓ Access token refreshed successfully');
-          return true;
+          if (kDebugMode) print('✓ Refresh Success');
+          return RefreshResult.success;
         } else {
-          if (kDebugMode) print('✗ Response 200 but no accessToken in body');
-          return false;
+          return RefreshResult.failed;
         }
       } else {
-        if (kDebugMode) {
-          print('✗ Refresh failed with status: ${response.statusCode}');
-          print('✗ Error message: ${response.body}');
-        }
+        // 401, 403 -> Token hết hạn thật sự -> Logout
+        if (kDebugMode) print('✗ Refresh Failed (Server rejected)');
         await _storage.delete(key: _tokenKey);
         await _storage.delete(key: _refreshTokenKey);
-        return false;
+        return RefreshResult.failed;
       }
-    } on TimeoutException {
-      if (kDebugMode) print('✗ Refresh timeout - network issue');
-      return false;
-    } on SocketException {
-      if (kDebugMode) print('✗ Refresh failed - no internet');
-      return false;
     } catch (e) {
-      if (kDebugMode) print('✗ Refresh token error: $e');
-      return false;
+      // Timeout, Mất mạng -> QUAN TRỌNG: TRẢ VỀ NETWORK ERROR ĐỂ KHÔNG LOGOUT
+      if (kDebugMode) print('⚠ Network/Server Sleep Error: $e');
+      return RefreshResult.networkError;
     }
   }
 
@@ -326,45 +348,33 @@ class AuthService {
   Future<bool> isLoggedIn() async {
     try {
       final token = await getToken();
-
-      if (token == null || token.isEmpty) {
-        return false;
-      }
+      if (token == null || token.isEmpty) return false;
 
       bool isExpired = JwtDecoder.isExpired(token);
 
       if (isExpired) {
         if (kDebugMode) print('⚠ Token expired, trying to refresh...');
 
-        final hasRefreshToken = await getRefreshToken();
-        if (hasRefreshToken != null) {
-          final refreshed = await refreshAccessToken();
+        // Gọi hàm refresh mới
+        final result = await refreshAccessToken();
 
-          if (refreshed) {
-            if (kDebugMode) print('✓ Token refreshed, user still logged in');
+        switch (result) {
+          case RefreshResult.success:
+            return true; // Có token mới -> OK
+
+          case RefreshResult.networkError:
+            // QUAN TRỌNG: Server ngủ hoặc mạng lag -> VẪN GIỮ ĐĂNG NHẬP
+            if (kDebugMode) print('⚠ Network error, keeping session active');
             return true;
-          } else {
-            if (kDebugMode) print('✗ Refresh failed, user logged out');
-            // Tự động đăng xuất nếu refresh thất bại
-            await signOut(); 
-            return false;
-          }
-        } else {
-          if (kDebugMode)
-            print('✗ No refresh token, backend not support refresh mechanism');
-          await signOut();
-          return false;
-        }
-      }
 
-      if (kDebugMode) {
-        final remainingTime = JwtDecoder.getRemainingTime(token);
-        print(
-            '✓ Token valid, expires in: ${remainingTime.inHours}h ${remainingTime.inMinutes % 60}m');
+          case RefreshResult.failed:
+            // Server từ chối -> Logout
+            await signOut();
+            return false;
+        }
       }
       return true;
     } catch (e) {
-      if (kDebugMode) print('✗ Invalid token: $e');
       await signOut();
       return false;
     }
@@ -373,51 +383,48 @@ class AuthService {
   // --- HÀM LẤY TOKEN HỢP LỆ (Đã thêm logic điều hướng) ---
   Future<String?> getValidToken({bool autoRedirect = true}) async {
     final token = await getToken();
-
-    // 1. Nếu không có token -> Đăng xuất ngay (nếu autoRedirect = true)
     if (token == null) {
-      if (autoRedirect) {
-        if (kDebugMode) print('🛑 No token found. Redirecting to Login...');
-        await signOut();
-      }
+      if (autoRedirect) await signOut();
       return null;
     }
 
     bool isExpired = JwtDecoder.isExpired(token);
+
+    // 🔥 SỬA: Kiểm tra thời gian còn lại
     Duration remainingTime = Duration.zero;
     try {
       remainingTime = JwtDecoder.getRemainingTime(token);
     } catch (e) {
       if (kDebugMode) print('✗ Cannot get remaining time: $e');
-      isExpired = true;
+      isExpired = true; // Nếu lỗi parse → Coi như hết hạn
     }
 
-    // Refresh trước 2 phút
-    bool aboutToExpire = !isExpired && remainingTime.inMinutes < 2; 
-    
-    if (isExpired || aboutToExpire) {
-      if (kDebugMode) {
-        if (isExpired) {
-          print('⚠ Token expired, refreshing...');
-        } else {
-          print(
-              '⚠ Token about to expire (${remainingTime.inMinutes}m left), refreshing...');
-        }
-      }
+    // 🔥 QUAN TRỌNG: Refresh trước 2 phút (120s) để tránh 401
+    bool aboutToExpire = !isExpired && remainingTime.inSeconds < 120;
 
-      final refreshed = await refreshAccessToken();
-      if (refreshed) {
+    if (kDebugMode && aboutToExpire) {
+      print(
+          '⚠ Token sắp hết hạn (còn ${remainingTime.inSeconds}s), refreshing...');
+    }
+
+    // Nếu hết hạn HOẶC sắp hết hạn → Refresh
+    if (isExpired || aboutToExpire) {
+      final result = await refreshAccessToken();
+
+      if (result == RefreshResult.success) {
         return await getToken();
-      } else {
-        if (kDebugMode) print('✗ Cannot refresh token. Redirecting to Login...');
-        // 2. Nếu refresh thất bại -> Đăng xuất ngay
-        if (autoRedirect) {
-          await signOut();
+      } else if (result == RefreshResult.networkError) {
+        // Nếu lỗi mạng, vẫn trả về token cũ (nếu chưa hết hạn)
+        if (!isExpired) {
+          if (kDebugMode) print('⚠ Network error, using old token');
+          return token;
         }
+        return null;
+      } else {
+        if (autoRedirect) await signOut();
         return null;
       }
     }
-
     return token;
   }
 
@@ -425,7 +432,7 @@ class AuthService {
   Future<bool> saveFcmToken(String fcmToken) async {
     try {
       // Không cần autoRedirect ở đây vì hàm này thường chạy ngầm
-      final token = await getValidToken(autoRedirect: false); 
+      final token = await getValidToken(autoRedirect: false);
       if (token == null) {
         if (kDebugMode) print('✗ No access token, cannot save FCM token');
         return false;

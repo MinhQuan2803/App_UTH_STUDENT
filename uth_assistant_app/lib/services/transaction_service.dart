@@ -9,28 +9,30 @@ import '../models/transaction_model.dart'; // Import model mới
 
 class TransactionService {
   // Base URL trỏ vào /api/documents vì các route mua/lịch sử đang nằm ở đó
-  static final String _baseUrl = '${AppAssets.documentApiBaseUrl}'; 
+  static final String _baseUrl = '${AppAssets.documentApiBaseUrl}';
   final AuthService _authService = AuthService();
 
   // --- Helper Functions (Giống PaymentService) ---
-  Future<Map<String, String>> _getAuthHeaders() async {
-    final String? token = await _authService.getToken();
-    if (token == null) throw Exception('401: Chưa đăng nhập');
+  Future<Map<String, String>> _getAuthHeaders(
+      {bool requireToken = true}) async {
+    final String? token = await _authService.getValidToken();
+    if (requireToken && token == null) throw Exception('401: Chưa đăng nhập');
     return {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
+      if (token != null) 'Authorization': 'Bearer $token',
     };
   }
 
   dynamic _processResponse(http.Response response) {
     if (kDebugMode) print('Response Status: ${response.statusCode}');
-    
+
     final dynamic decodedBody = jsonDecode(utf8.decode(response.bodyBytes));
-    
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodedBody;
     } else {
-      final errorMessage = (decodedBody is Map && decodedBody.containsKey('message'))
+      final errorMessage =
+          (decodedBody is Map && decodedBody.containsKey('message'))
               ? decodedBody['message']
               : 'Lỗi Server: ${response.statusCode}';
       throw Exception(errorMessage);
@@ -69,8 +71,7 @@ class TransactionService {
       }
 
       // Trả về kết quả (thường chứa newBalance để update UI)
-      return data; 
-
+      return data;
     } catch (e) {
       throw _handleNetworkError(e);
     }

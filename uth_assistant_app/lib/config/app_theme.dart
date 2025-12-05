@@ -288,22 +288,18 @@ class AppTextStyles {
       fontFamily: 'Poppins',
       fontSize: 16,
       fontWeight: FontWeight.w600,
-      color: AppColors.text
-  );
+      color: AppColors.text);
   static const TextStyle beVietnam = TextStyle(
       fontFamily: 'BeVietnamPro',
       fontSize: 14,
       fontWeight: FontWeight.w400,
-      color: AppColors.subtitle
-  );
+      color: AppColors.subtitle);
   static const TextStyle title = TextStyle(
       fontFamily: 'Montserrat',
       fontSize: 14,
       fontWeight: FontWeight.w700,
-      color: AppColors.text
-  );
-  }
-
+      color: AppColors.text);
+}
 
 // Lớp quản lý đường dẫn tài sản (assets)
 class AppAssets {
@@ -312,7 +308,7 @@ class AppAssets {
   static const String _imagesPicPath = 'assets/images_pic';
 
   // --- API URLS ---
-  static const bool _isLocal = true;
+  static const bool _isLocal = false;
   static const String _prodBaseUrl = 'https://uthstudent.onrender.com/api';
   // TODO: Thay '192.168.1.11' bằng IP Wifi của máy tính bạn
   static const String _localBaseUrl = 'http://192.168.2.4:5000/api';

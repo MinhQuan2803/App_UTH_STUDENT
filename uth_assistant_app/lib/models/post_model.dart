@@ -43,6 +43,8 @@ class Post {
   final int sharesCount;
   final DateTime createdAt;
   final String? myReactionType;
+  final bool isDocumentPost; // Đánh dấu bài post từ tài liệu
+  final String? docId; // ID của tài liệu nếu có
 
   Post({
     required this.id,
@@ -56,6 +58,8 @@ class Post {
     this.sharesCount = 0,
     required this.createdAt,
     this.myReactionType,
+    this.isDocumentPost = false,
+    this.docId,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
@@ -91,6 +95,8 @@ class Post {
       sharesCount: json['sharesCount'] ?? 0,
       createdAt: createdAtDate,
       myReactionType: json['myReactionType'],
+      isDocumentPost: json['isDocumentPost'] ?? false,
+      docId: json['docId'],
     );
   }
 }

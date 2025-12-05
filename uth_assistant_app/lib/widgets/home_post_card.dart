@@ -6,6 +6,7 @@ import '../services/post_service.dart';
 import '../services/interaction_service.dart';
 import '../utils/time_formatter.dart';
 import '../screens/add_post_screen.dart';
+import '../screens/image_viewer_screen.dart';
 import 'custom_notification.dart';
 import 'package:flutter/foundation.dart'; // Cho kDebugMode
 
@@ -15,6 +16,8 @@ class HomePostCard extends StatefulWidget {
   final VoidCallback onPostDeleted; // Callback khi xóa thành công
   final VoidCallback onPostUpdated; // Callback khi sửa thành công
   final bool isDetailView; // True nếu đang hiển thị trong màn hình chi tiết
+  final String?
+      currentUsername; // Username của profile đang xem (để tránh vòng lặp)
 
   const HomePostCard({
     super.key,
@@ -23,6 +26,7 @@ class HomePostCard extends StatefulWidget {
     required this.onPostDeleted,
     required this.onPostUpdated,
     this.isDetailView = false, // Mặc định là false
+    this.currentUsername, // Tùy chọn
   });
 
   @override
@@ -229,9 +233,22 @@ class _HomePostCardState extends State<HomePostCard> {
     // Nếu đang ở màn hình chi tiết rồi thì không làm gì
     if (widget.isDetailView) return;
 
-    Navigator.pushNamed(context, '/post_detail',
-        // SỬA LỖI: Không cần truyền backgroundColor cho style Facebook
-        arguments: {'post': widget.post});
+    // Nếu là bài post từ tài liệu → Mở Document Detail
+    if (widget.post.isDocumentPost && widget.post.docId != null) {
+      Navigator.pushNamed(
+        context,
+        '/document_detail',
+        arguments: {'documentId': widget.post.docId},
+      );
+      return;
+    }
+
+    // Bài post thông thường → Mở Post Detail
+    Navigator.pushNamed(
+      context,
+      '/post_detail',
+      arguments: {'post': widget.post},
+    );
   }
 
   @override
@@ -255,7 +272,45 @@ class _HomePostCardState extends State<HomePostCard> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                 child: Text(widget.post.text,
-                    style: AppTextStyles.postContent.copyWith(fontSize: 16,fontWeight: FontWeight.w400)),
+                    style: AppTextStyles.postContent
+                        .copyWith(fontSize: 16, fontWeight: FontWeight.w400)),
+              ),
+            // Hiển thị badge nếu là bài post từ tài liệu
+            if (widget.post.isDocumentPost)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.description,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Bài viết về tài liệu - Nhấn để xem chi tiết',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             if (widget.post.mediaUrls.isNotEmpty) ...[
               const SizedBox(height: 8.0),
@@ -263,7 +318,8 @@ class _HomePostCardState extends State<HomePostCard> {
             ],
             _buildActionButtons(context),
             // Divider giữa các posts
-            const Divider(height: 1, thickness: 10, color: AppColors.background),
+            const Divider(
+                height: 1, thickness: 10, color: AppColors.background),
           ],
         ),
       ),
@@ -309,11 +365,13 @@ class _HomePostCardState extends State<HomePostCard> {
       child: Row(
         children: [
           GestureDetector(
-            // Nhấn vào avatar → Đi đến profile
-            onTap: () => Navigator.pushNamed(context, '/profile',
-                arguments: {'username': widget.post.author.username}),
-            // Long press avatar → Xem ảnh đại diện phóng to
-            onLongPress: () => _showAvatarFullScreen(context),
+            // Nhấn vào avatar → Xem ảnh full screen
+            onTap: () => _openImageViewer(
+              context,
+              [_getAvatarUrl()],
+              0,
+              widget.post.author.username,
+            ),
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -330,8 +388,27 @@ class _HomePostCardState extends State<HomePostCard> {
           const SizedBox(width: 10),
           Expanded(
             child: GestureDetector(
-              onTap: () => Navigator.pushNamed(context, '/profile',
-                  arguments: {'username': widget.post.author.username}),
+              onTap: () {
+                // KHÓA VÒNG LẶP: Kiểm tra nếu đang ở profile của chính user này thì không điều hướng
+                // TH1: Đang ở ProfileScreen của user này (currentUsername khớp)
+                if (widget.currentUsername != null &&
+                    widget.post.author.username == widget.currentUsername) {
+                  return; // Đang xem profile của user A, click vào post của user A → Không làm gì
+                }
+
+                // TH2: Click vào chính mình từ bất kỳ đâu
+                if (widget.username != null &&
+                    widget.post.author.username == widget.username) {
+                  // Nếu đang ở ProfileScreen (có currentUsername) thì không làm gì
+                  if (widget.currentUsername != null) {
+                    return;
+                  }
+                  // Nếu không ở ProfileScreen (ở Home chẳng hạn), cho phép navigate đến profile của mình
+                }
+
+                Navigator.pushNamed(context, '/profile',
+                    arguments: {'username': widget.post.author.username});
+              },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -485,101 +562,16 @@ class _HomePostCardState extends State<HomePostCard> {
     );
   }
 
-  // Hiển thị ảnh đại diện full screen khi long press avatar
-  void _showAvatarFullScreen(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black87,
-      builder: (context) => Dialog(
-        backgroundColor: AppColors.transparent,
-        insetPadding: EdgeInsets.zero,
-        child: Stack(
-          children: [
-            // Ảnh có thể zoom và pan
-            Center(
-              child: InteractiveViewer(
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: Image.network(
-                  _getAvatarUrl(),
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 300,
-                      height: 300,
-                      color: AppColors.imagePlaceholder,
-                      child: const Icon(Icons.broken_image,
-                          size: 80, color: AppColors.subtitle),
-                    );
-                  },
-                ),
-              ),
-            ),
-            // Nút đóng
-            Positioned(
-              top: 40,
-              right: 20,
-              child: Material(
-                color: Colors.black54,
-                shape: const CircleBorder(),
-                child: IconButton(
-                  icon:
-                      const Icon(Icons.close, color: AppColors.white, size: 28),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-            ),
-            // Tên người dùng ở dưới
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.7),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      widget.post.author.username,
-                      style: const TextStyle(
-                        color: AppColors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, '/profile', arguments: {
-                          'username': widget.post.author.username
-                        });
-                      },
-                      icon: const Icon(Icons.person, size: 18),
-                      label: const Text('Xem trang cá nhân'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+  // Mở ImageViewerScreen để xem ảnh full screen
+  void _openImageViewer(
+      BuildContext context, List<String> urls, int index, String title) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ImageViewerScreen(
+          imageUrls: urls,
+          initialIndex: index,
+          title: title,
         ),
       ),
     );
@@ -667,30 +659,41 @@ class _HomePostCardState extends State<HomePostCard> {
   Widget _buildMediaGallery(BuildContext context, List<String> mediaUrls) {
     if (mediaUrls.isEmpty) return const SizedBox.shrink();
 
-    // Helper để build cached image với giới hạn chiều cao
-    Widget buildCachedImage(String url, {double? height}) {
-      return ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxHeight: 400, // Giới hạn chiều cao tối đa
-        ),
-        child: CachedNetworkImage(
-          imageUrl: url,
-          height: height,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            height: height ?? 200,
-            color: AppColors.imagePlaceholder,
-            child: const Center(
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppColors.primary),
-            ),
+    // Helper để build cached image với giới hạn chiều cao và hỗ trợ click
+    Widget buildCachedImage(String url, {double? height, int? index}) {
+      return GestureDetector(
+        onTap: () {
+          // Click vào ảnh → Mở ImageViewerScreen
+          _openImageViewer(
+            context,
+            mediaUrls,
+            index ?? mediaUrls.indexOf(url),
+            widget.post.author.username,
+          );
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxHeight: 400, // Giới hạn chiều cao tối đa
           ),
-          errorWidget: (context, url, error) => Container(
-            height: height ?? 200,
-            color: AppColors.imagePlaceholder,
-            child: const Icon(Icons.broken_image,
-                size: 40, color: AppColors.subtitle),
+          child: CachedNetworkImage(
+            imageUrl: url,
+            height: height,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => Container(
+              height: height ?? 200,
+              color: AppColors.imagePlaceholder,
+              child: const Center(
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: AppColors.primary),
+              ),
+            ),
+            errorWidget: (context, url, error) => Container(
+              height: height ?? 200,
+              color: AppColors.imagePlaceholder,
+              child: const Icon(Icons.broken_image,
+                  size: 40, color: AppColors.subtitle),
+            ),
           ),
         ),
       );
@@ -698,84 +701,83 @@ class _HomePostCardState extends State<HomePostCard> {
 
     // 1 ảnh: Full width
     if (mediaUrls.length == 1) {
-      return GestureDetector(
-        onTap: widget.isDetailView ? null : _navigateToDetail,
-        child: buildCachedImage(mediaUrls[0]),
-      );
+      return buildCachedImage(mediaUrls[0], index: 0);
     }
 
     // 2 ảnh: 2 cột
     if (mediaUrls.length == 2) {
-      return GestureDetector(
-        onTap: widget.isDetailView ? null : _navigateToDetail,
-        child: Row(
-          children: mediaUrls
-              .map((url) => Expanded(
-                    child: AspectRatio(
-                      aspectRatio: 1,
-                      child: buildCachedImage(url, height: 200),
-                    ),
-                  ))
-              .toList(),
-        ),
+      return Row(
+        children: mediaUrls
+            .asMap()
+            .entries
+            .map((entry) => Expanded(
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: buildCachedImage(entry.value,
+                        height: 200, index: entry.key),
+                  ),
+                ))
+            .toList(),
       );
     }
 
     // 3 ảnh: 1 lớn + 2 nhỏ
     if (mediaUrls.length == 3) {
-      return GestureDetector(
-        onTap: widget.isDetailView ? null : _navigateToDetail,
-        child: Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: buildCachedImage(mediaUrls[0], height: 300),
-              ),
+      return Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: buildCachedImage(mediaUrls[0], height: 300, index: 0),
             ),
-            const SizedBox(width: 2),
-            Expanded(
-              child: Column(
-                children: [
-                  AspectRatio(
-                    aspectRatio: 1,
-                    child: buildCachedImage(mediaUrls[1], height: 150),
-                  ),
-                  const SizedBox(height: 2),
-                  AspectRatio(
-                    aspectRatio: 1,
-                    child: buildCachedImage(mediaUrls[2], height: 150),
-                  ),
-                ],
-              ),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: Column(
+              children: [
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: buildCachedImage(mediaUrls[1], height: 150, index: 1),
+                ),
+                const SizedBox(height: 2),
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: buildCachedImage(mediaUrls[2], height: 150, index: 2),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
     // 4+ ảnh: Grid 2x2
-    return GestureDetector(
-      onTap: widget.isDetailView ? null : _navigateToDetail,
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 1,
-          crossAxisSpacing: 2,
-          mainAxisSpacing: 2,
-        ),
-        itemCount: mediaUrls.length > 4 ? 4 : mediaUrls.length,
-        itemBuilder: (context, index) {
-          final isLast = index == 3 && mediaUrls.length > 4;
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              buildCachedImage(mediaUrls[index]),
-              if (isLast)
-                Container(
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
+      ),
+      itemCount: mediaUrls.length > 4 ? 4 : mediaUrls.length,
+      itemBuilder: (context, index) {
+        final isLast = index == 3 && mediaUrls.length > 4;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            buildCachedImage(mediaUrls[index], index: index),
+            if (isLast)
+              GestureDetector(
+                onTap: () => _openImageViewer(
+                  context,
+                  mediaUrls,
+                  index,
+                  widget.post.author.username,
+                ),
+                child: Container(
                   color: AppColors.imageOverlay,
                   child: Center(
                     child: Text(
@@ -784,10 +786,10 @@ class _HomePostCardState extends State<HomePostCard> {
                     ),
                   ),
                 ),
-            ],
-          );
-        },
-      ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

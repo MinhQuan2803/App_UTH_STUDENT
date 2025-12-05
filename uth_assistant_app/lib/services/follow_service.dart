@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'auth_service.dart';
 import '../config/app_theme.dart'; // Import để dùng AppAssets
 
 /// Service xử lý Follow/Unfollow users
@@ -8,12 +8,11 @@ import '../config/app_theme.dart'; // Import để dùng AppAssets
 class FollowService {
   static final String baseUrl =
       AppAssets.followApiBaseUrl; // Dùng URL chung từ AppAssets
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final AuthService _authService = AuthService();
 
-  /// Lấy token từ secure storage (phải khớp với key trong auth_service.dart)
+  /// Lấy token hợp lệ (tự động refresh nếu cần)
   Future<String?> _getToken() async {
-    return await _storage.read(
-        key: 'accessToken'); // Sửa từ 'auth_token' thành 'accessToken'
+    return await _authService.getValidToken();
   }
 
   /// Lấy thông tin profile của một user theo username

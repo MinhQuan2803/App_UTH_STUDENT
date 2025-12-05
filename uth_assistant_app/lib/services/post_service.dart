@@ -23,7 +23,7 @@ class PostService {
   /// Lấy headers kèm token (nếu có)
   Future<Map<String, String>> _getAuthHeaders(
       {bool requireToken = false}) async {
-    final String? token = await _authService.getToken();
+    final String? token = await _authService.getValidToken();
     if (requireToken && token == null) {
       throw Exception('401: Chưa đăng nhập');
     }

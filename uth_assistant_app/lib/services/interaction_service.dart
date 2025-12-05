@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'auth_service.dart';
 import '../config/app_theme.dart';
 
 /// Service xử lý tương tác với bài viết (like, comment)
@@ -9,11 +9,11 @@ import '../config/app_theme.dart';
 class InteractionService {
   // Sử dụng production base URL (không có /posts hay /users, chỉ /api)
   static const String baseUrl = 'https://uthstudent.onrender.com/api';
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final AuthService _authService = AuthService();
 
-  /// Lấy token từ secure storage
+  /// Lấy token hợp lệ (tự động refresh nếu cần)
   Future<String?> _getToken() async {
-    return await _storage.read(key: 'accessToken');
+    return await _authService.getValidToken();
   }
 
   /// Toggle like cho bài viết

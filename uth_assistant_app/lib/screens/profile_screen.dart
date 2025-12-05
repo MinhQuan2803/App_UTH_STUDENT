@@ -94,6 +94,18 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
+  // Method public để scroll to top và reload
+  void scrollToTopAndRefresh() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
+    _loadAllData(forceRefresh: true);
+  }
+
   Future<void> _loadAllData({bool forceRefresh = false}) async {
     if (!mounted) return;
 
@@ -287,7 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   // --- UI Components ---
-  
+
   // Hàm điều hướng sang màn hình Follow
   void _navigateToFollowList(int initialIndex) {
     if (_user == null) return;
@@ -355,20 +367,23 @@ class _ProfileScreenState extends State<ProfileScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildStatItem('$_actualPostsCount', 'Bài viết'), // Bài viết không cần click
-                          
+                          _buildStatItem('$_actualPostsCount',
+                              'Bài viết'), // Bài viết không cần click
+
                           // THAY ĐỔI: Thêm onTap cho Follower
                           _buildStatItem(
-                            '$_actualFollowersCount', 
+                            '$_actualFollowersCount',
                             'Người theo dõi',
-                            onTap: () => _navigateToFollowList(1), // Index 1: Follower
+                            onTap: () =>
+                                _navigateToFollowList(1), // Index 1: Follower
                           ),
-                          
+
                           // THAY ĐỔI: Thêm onTap cho Following
                           _buildStatItem(
-                            '$_actualFollowingCount', 
+                            '$_actualFollowingCount',
                             'Đang theo dõi',
-                            onTap: () => _navigateToFollowList(0), // Index 0: Đang follow
+                            onTap: () => _navigateToFollowList(
+                                0), // Index 0: Đang follow
                           ),
                         ],
                       ),
@@ -485,7 +500,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildStatItem(String value, String label, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque, // QUAN TRỌNG: Bắt sự kiện nhấn trên toàn bộ vùng chứa kể cả khoảng trắng
+      behavior: HitTestBehavior
+          .opaque, // QUAN TRỌNG: Bắt sự kiện nhấn trên toàn bộ vùng chứa kể cả khoảng trắng
       child: Container(
         color: Colors.transparent, // Đảm bảo bắt được sự kiện nhấn
         // Padding rộng ra để dễ nhấn (12px ngang, 8px dọc)
@@ -497,14 +513,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             Text(
               value,
               style: AppTextStyles.numberInfor.copyWith(
-                fontSize: 16, 
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primaryDark,
               ),
               textAlign: TextAlign.center,
             ),
             Text(
-              label, 
+              label,
               style: AppTextStyles.bodyRegular.copyWith(
                 fontSize: 10, // Chữ nhỏ gọn
                 color: Colors.grey[700],
@@ -525,6 +541,13 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     final bool isPushed = widget.username != null;
     final bool isOwner = _user?['isOwner'] ?? false;
+
+    // QUAN TRỌNG: Kiểm tra xem có phải được push từ Navigator hay không
+    // Nếu canPop = true → Có màn hình phía sau → Hiển thị nút back
+    // Nếu canPop = false → Không có màn hình phía sau (từ BottomBar) → Hiển thị icon khóa
+    final bool canGoBack = Navigator.canPop(context);
+    final bool showBackButton =
+        canGoBack && isPushed; // Chỉ show back nếu được push VÀ có thể pop
 
     // --- LOGIC MÀU SẮC DỰA TRÊN 3 TRẠNG THÁI ---
     // 1. Kéo xuống (_isPullingDown) hoặc Đã cuộn (_isScrolled) -> Màu ĐEN
@@ -610,8 +633,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                 },
                 child: Row(
                   children: [
-                    isOwner
+                    // LOGIC: Hiển thị nút back nếu được push từ Navigator
+                    // Hiển thị icon khóa nếu vào từ BottomBar (profile của mình)
+                    showBackButton
                         ? Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: Icon(Icons.arrow_back,
+                                  color: currentColor, size: 25),
+                            ),
+                          )
+                        : Padding(
                             padding: const EdgeInsets.all(0.0),
                             child: SvgPicture.asset(
                               AppAssets.iconPrivate,
@@ -619,14 +652,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                               height: 20,
                               colorFilter: ColorFilter.mode(
                                   currentColor, BlendMode.srcIn),
-                            ),
-                          )
-                        : Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Icon(Icons.arrow_back,
-                                  color: currentColor, size: 25),
                             ),
                           ),
                     const SizedBox(width: 8),
@@ -684,6 +709,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                       child: HomePostCard(
                         post: _posts[index],
                         username: _myUsername,
+                        currentUsername: _user?[
+                            'username'], // Truyền username của profile đang xem
                         onPostDeleted: () => _loadAllData(forceRefresh: true),
                         onPostUpdated: () => _loadAllData(forceRefresh: true),
                       ),
@@ -693,8 +720,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
 
-            // Padding bottom an toàn
-            const SliverToBoxAdapter(child: SizedBox(height: 10)),
+            // Padding bottom để không bị BottomNavBar che
+            const SliverPadding(
+              padding: EdgeInsets.only(bottom: 80),
+            ),
           ],
         ),
       ),

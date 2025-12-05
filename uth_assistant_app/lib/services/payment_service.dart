@@ -14,7 +14,7 @@ class PaymentService {
   // --- Helper Functions (Tái sử dụng) ---
   Future<Map<String, String>> _getAuthHeaders(
       {bool requireToken = false}) async {
-    final String? token = await _authService.getToken();
+    final String? token = await _authService.getValidToken();
     if (requireToken && token == null) throw Exception('401: Chưa đăng nhập');
     final headers = {'Content-Type': 'application/json'};
     if (token != null) headers['Authorization'] = 'Bearer $token';
@@ -150,7 +150,7 @@ class PaymentService {
       final data = _processResponse(response);
 
       // API trả về trực tiếp: { "success": true, "balance": 1460, "level": 0 }
-      if (data['success'] == true) {
+      if (data is Map && data.containsKey('balance')) {
         final int balance = data['balance'] ?? 0;
         final int level = data['level'] ?? 0;
         final int totalEarned = data['totalEarned'] ?? 0;

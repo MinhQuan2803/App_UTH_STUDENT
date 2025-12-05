@@ -12,6 +12,7 @@ class DocumentService {
   static final String _baseUrl = '${AppAssets.documentApiBaseUrl}';
   final AuthService _authService = AuthService();
 
+  /// Upload tài liệu (không tạo bài post)
   Future<bool> uploadDocument({
     required File file,
     required String title,
@@ -20,7 +21,7 @@ class DocumentService {
     String privacy = 'public',
   }) async {
     final uri = Uri.parse('$_baseUrl/upload');
-    final token = await _authService.getToken();
+    final token = await _authService.getValidToken();
 
     // 1. Tạo MultipartRequest (POST)
     var request = http.MultipartRequest('POST', uri);
@@ -35,32 +36,14 @@ class DocumentService {
     request.fields['price'] = price.toString();
     request.fields['description'] = description;
     request.fields['privacy'] = privacy;
-    // Backend của bạn hiện tại không lấy description, nên không cần gửi
 
     // 4. Thêm File - Backend req.file
-    // Lấy đuôi file để xác định MediaType
-    String extension = file.path.split('.').last.toLowerCase();
-    MediaType mediaType;
-    
-    if (extension == 'pdf') {
-      mediaType = MediaType('application', 'pdf');
-    } else if (extension == 'doc') {
-      mediaType = MediaType('application', 'msword');
-    } else {
-      mediaType = MediaType('application', 'vnd.openxmlformats-officedocument.wordprocessingml.document'); // docx
-    }
-
-    // 'file' là tên key mà Backend: .single('file') đang chờ
-    request.files.add(await http.MultipartFile.fromPath(
-      'file', 
-      file.path,
-      contentType: mediaType,
-    ));
+    request.files.add(await _createMultipartFile(file));
 
     try {
       // 5. Gửi Request
       if (kDebugMode) print('Đang upload file: ${file.path}...');
-      
+
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
@@ -78,8 +61,82 @@ class DocumentService {
     }
   }
 
+  /// Upload tài liệu VÀ tự động tạo bài post
+  Future<Map<String, dynamic>> uploadDocumentWithPost({
+    required File file,
+    required String title,
+    required String description,
+    required int price,
+    String privacy = 'public',
+  }) async {
+    final uri = Uri.parse('$_baseUrl/upload-with-post');
+    final token = await _authService.getValidToken();
+
+    // 1. Tạo MultipartRequest (POST)
+    var request = http.MultipartRequest('POST', uri);
+
+    // 2. Thêm Headers (Auth)
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    // 3. Thêm Fields (Text) - Backend req.body
+    request.fields['title'] = title;
+    request.fields['price'] = price.toString();
+    request.fields['description'] = description;
+    request.fields['privacy'] = privacy;
+
+    // 4. Thêm File - Backend req.file
+    request.files.add(await _createMultipartFile(file));
+
+    try {
+      // 5. Gửi Request
+      if (kDebugMode) print('Đang upload file với auto-post: ${file.path}...');
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201) {
+        if (kDebugMode) print('Upload + Post thành công: ${response.body}');
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return {
+          'document': data['document'],
+          'post': data['post'],
+        };
+      } else {
+        if (kDebugMode) print('Upload + Post thất bại: ${response.body}');
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Lỗi upload tài liệu');
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error uploading doc with post: $e');
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  /// Helper: Tạo MultipartFile từ File
+  Future<http.MultipartFile> _createMultipartFile(File file) async {
+    String extension = file.path.split('.').last.toLowerCase();
+    MediaType mediaType;
+
+    if (extension == 'pdf') {
+      mediaType = MediaType('application', 'pdf');
+    } else if (extension == 'doc') {
+      mediaType = MediaType('application', 'msword');
+    } else {
+      mediaType = MediaType('application',
+          'vnd.openxmlformats-officedocument.wordprocessingml.document'); // docx
+    }
+
+    return await http.MultipartFile.fromPath(
+      'file',
+      file.path,
+      contentType: mediaType,
+    );
+  }
+
   Future<Map<String, String>> _getHeaders() async {
-    final token = await _authService.getToken();
+    final token = await _authService.getValidToken();
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -110,30 +167,30 @@ class DocumentService {
 // Hàm helper để gọi API và parse list
   Future<List<DocumentModel>> _fetchDocuments(String url) async {
     if (kDebugMode) print('GET DOCS: $url');
-    
+
     final headers = await _getHeaders();
     try {
       final response = await http.get(Uri.parse(url), headers: headers);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        
+
         // ============================================================
         // [DEBUG] THÊM ĐOẠN NÀY ĐỂ SOI DỮ LIỆU TỦ SÁCH
         // ============================================================
-        if (url.contains('purchased')) { 
-           print("==================================================");
-           print("🛠 DEBUG API TỦ SÁCH (RAW JSON):");
-           final listDocs = data['documents'] as List;
-           
-           if (listDocs.isNotEmpty) {
-              // In ra phần tử đầu tiên để kiểm tra xem có trường 'url' và 'ownerId' không
-              // Dùng jsonEncode để in ra dạng chuỗi dễ đọc
-              print("📄 Document[0]: ${jsonEncode(listDocs[0])}");
-           } else {
-              print("⚠️ Danh sách trả về RỖNG!");
-           }
-           print("==================================================");
+        if (url.contains('purchased')) {
+          print("==================================================");
+          print("🛠 DEBUG API TỦ SÁCH (RAW JSON):");
+          final listDocs = data['documents'] as List;
+
+          if (listDocs.isNotEmpty) {
+            // In ra phần tử đầu tiên để kiểm tra xem có trường 'url' và 'ownerId' không
+            // Dùng jsonEncode để in ra dạng chuỗi dễ đọc
+            print("📄 Document[0]: ${jsonEncode(listDocs[0])}");
+          } else {
+            print("⚠️ Danh sách trả về RỖNG!");
+          }
+          print("==================================================");
         }
         // ============================================================
 
@@ -164,8 +221,9 @@ class DocumentService {
       throw Exception('Lỗi tải chi tiết tài liệu');
     }
   }
+
   //yêu thích
-     Future<bool> toggleLike(String id) async {
+  Future<bool> toggleLike(String id) async {
     final headers = await _getHeaders();
     final response = await http.post(
       Uri.parse('$_baseUrl/$id/like'),
@@ -174,13 +232,14 @@ class DocumentService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['isLiked'] ?? false; 
+      return data['isLiked'] ?? false;
     } else {
       throw Exception('Lỗi thao tác yêu thích');
     }
   }
+
   //sửa và xoá tài liệu
- Future<bool> deleteDocument(String id) async {
+  Future<bool> deleteDocument(String id) async {
     final headers = await _getHeaders();
     final response = await http.delete(
       Uri.parse('$_baseUrl/$id'),
@@ -196,7 +255,8 @@ class DocumentService {
   }
 
   // Cập nhật tài liệu (Tiêu đề & Quyền riêng tư)
- Future<bool> updateDocument(String id, String title, String privacy, int price) async {
+  Future<bool> updateDocument(
+      String id, String title, String privacy, int price) async {
     final headers = await _getHeaders();
     final body = jsonEncode({
       'title': title,

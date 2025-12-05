@@ -204,6 +204,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       key: ValueKey(_currentPost.id),
                       post: _currentPost,
                       username: _username,
+                      currentUsername: _currentPost.author
+                          .username, // KHÓA VÒNG LẶP: Không cho click vào username của post đang xem
                       isDetailView: true,
                       onPostDeleted: () {
                         Navigator.pop(context, true);

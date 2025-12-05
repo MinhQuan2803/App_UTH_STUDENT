@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:math' as math;
 import '../config/app_theme.dart'; // Import AppTheme
+import '../screens/image_viewer_screen.dart'; // Import ImageViewer
 
 class AnimatedWaveHeader extends StatefulWidget {
   final VoidCallback? onSearchPressed;
@@ -71,9 +72,20 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader>
               padding: const EdgeInsets.fromLTRB(14, 0, 8, 0),
               child: Row(
                 children: [
-                  // Wrap avatar trong GestureDetector
+                  // Avatar: Nhấn để xem ảnh full screen
                   GestureDetector(
-                    onTap: widget.onProfileTap,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ImageViewerScreen(
+                            imageUrls: [displayAvatarUrl],
+                            initialIndex: 0,
+                            title: widget.username,
+                          ),
+                        ),
+                      );
+                    },
                     child: CircleAvatar(
                       radius: 22,
                       backgroundColor: AppColors.avatarBorder,
@@ -85,7 +97,7 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader>
                     ),
                   ),
                   const SizedBox(width: 15),
-                  // Wrap text trong GestureDetector
+                  // Username: Nhấn để đến profile
                   Expanded(
                     child: GestureDetector(
                       onTap: widget.onProfileTap,
@@ -95,9 +107,10 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader>
                         children: [
                           const Text('Chào bạn,',
                               style: AppTextStyles.headerGreeting),
-                              const SizedBox(height: 0),
+                          const SizedBox(height: 0),
                           Text(widget.username,
-                              style: AppTextStyles.usernamePacifico.copyWith(color: AppColors.white,fontSize: 16),
+                              style: AppTextStyles.usernamePacifico.copyWith(
+                                  color: AppColors.white, fontSize: 16),
                               overflow: TextOverflow.ellipsis),
                         ],
                       ),

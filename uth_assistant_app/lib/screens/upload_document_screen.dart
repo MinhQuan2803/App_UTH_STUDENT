@@ -16,7 +16,7 @@ class UploadDocumentScreen extends StatefulWidget {
 class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   final _formKey = GlobalKey<FormState>();
   final DocumentService _docService = DocumentService();
-  
+
   // Controllers
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -26,9 +26,10 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   File? _selectedFile;
   String? _fileName;
   String _privacy = 'public';
-  bool _isFree = true; 
+  bool _isFree = true;
+  bool _autoCreatePost = false; // Checkbox tự động tạo bài post
   bool _isUploading = false;
-  
+
   final currencyFormat = NumberFormat("#,###", "vi_VN");
 
   @override
@@ -43,7 +44,9 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   Future<void> _pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf',],
+      allowedExtensions: [
+        'pdf',
+      ],
     );
 
     if (result != null && result.files.single.path != null) {
@@ -61,7 +64,9 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn file tài liệu!'), backgroundColor: AppColors.danger),
+        const SnackBar(
+            content: Text('Vui lòng chọn file tài liệu!'),
+            backgroundColor: AppColors.danger),
       );
       return;
     }
@@ -71,27 +76,51 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
     try {
       int finalPrice = 0;
       if (!_isFree) {
-        String cleanPrice = _priceController.text.replaceAll('.', '').replaceAll(',', '');
+        String cleanPrice =
+            _priceController.text.replaceAll('.', '').replaceAll(',', '');
         finalPrice = int.tryParse(cleanPrice) ?? 0;
       }
 
-      await _docService.uploadDocument(
-        file: _selectedFile!,
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        price: finalPrice,
-        privacy: _privacy,
-      );
-
-      if (mounted) {
-        showAppDialog(
-          context,
-          type: DialogType.success,
-          title: 'Thành công',
-          message: 'Tài liệu đã được đăng tải!',
+      if (_autoCreatePost) {
+        // Gọi API upload-with-post (tạo cả document và post)
+        await _docService.uploadDocumentWithPost(
+          file: _selectedFile!,
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          price: finalPrice,
+          privacy: _privacy,
         );
-        await Future.delayed(const Duration(seconds: 1)); 
-        Navigator.pop(context, true);
+
+        if (mounted) {
+          showAppDialog(
+            context,
+            type: DialogType.success,
+            title: 'Thành công',
+            message: 'Tài liệu đã được đăng tải và bài viết đã được tạo!',
+          );
+          await Future.delayed(const Duration(seconds: 1));
+          Navigator.pop(context, true);
+        }
+      } else {
+        // Gọi API upload thông thường (chỉ tạo document)
+        await _docService.uploadDocument(
+          file: _selectedFile!,
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          price: finalPrice,
+          privacy: _privacy,
+        );
+
+        if (mounted) {
+          showAppDialog(
+            context,
+            type: DialogType.success,
+            title: 'Thành công',
+            message: 'Tài liệu đã được đăng tải!',
+          );
+          await Future.delayed(const Duration(seconds: 1));
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -114,13 +143,18 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
     return Scaffold(
       backgroundColor: AppColors.primaryLight, // Màu nền xám nhạt sạch sẽ
       appBar: AppBar(
-        title: const Text('Đăng tài liệu', style: AppTextStyles.appBarTitle,),
+        title: const Text(
+          'Đăng tài liệu',
+          style: AppTextStyles.appBarTitle,
+        ),
         backgroundColor: AppColors.white,
         elevation: 0.5,
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppColors.text),
         leading: IconButton(
-          icon: const Icon(Icons.close,),
+          icon: const Icon(
+            Icons.close,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -137,15 +171,18 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                     // 1. File Upload Area
                     _buildUploadArea(),
                     const SizedBox(height: 12),
-                    
+
                     // 2. Info Fields
-                    Text('THÔNG TIN CƠ BẢN', style: AppTextStyles.sectionTitle.copyWith(color: AppColors.subtitle)),
+                    Text('THÔNG TIN CƠ BẢN',
+                        style: AppTextStyles.sectionTitle
+                            .copyWith(color: AppColors.subtitle)),
                     const SizedBox(height: 12),
                     _buildInputField(
                       controller: _titleController,
                       label: 'Tiêu đề tài liệu',
                       hint: 'Nhập tiêu đề rõ ràng...',
-                      validator: (v) => v!.isEmpty ? 'Không được để trống' : null,
+                      validator: (v) =>
+                          v!.isEmpty ? 'Không được để trống' : null,
                     ),
                     const SizedBox(height: 16),
                     _buildInputField(
@@ -158,7 +195,9 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                     const SizedBox(height: 24),
 
                     // 3. Settings Area
-                    Text('CÀI ĐẶT', style: AppTextStyles.sectionTitle.copyWith(color: AppColors.subtitle)),
+                    Text('CÀI ĐẶT',
+                        style: AppTextStyles.sectionTitle
+                            .copyWith(color: AppColors.subtitle)),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -171,11 +210,22 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                         children: [
                           _buildPriceOption(),
                           if (!_isFree) ...[
-                            const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1, color: AppColors.divider)),
+                            const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Divider(
+                                    height: 1, color: AppColors.divider)),
                             _buildPriceInput(),
                           ],
-                          const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1, color: AppColors.divider)),
+                          const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child:
+                                  Divider(height: 1, color: AppColors.divider)),
                           _buildPrivacyDropdown(),
+                          const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child:
+                                  Divider(height: 1, color: AppColors.divider)),
+                          _buildAutoPostCheckbox(),
                         ],
                       ),
                     ),
@@ -184,7 +234,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
               ),
             ),
           ),
-          
+
           // Bottom Button
           Container(
             padding: const EdgeInsets.all(20),
@@ -200,12 +250,17 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                   textStyle: AppTextStyles.button,
                 ),
                 child: _isUploading
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
                     : const Text('ĐĂNG TÀI LIỆU'),
               ),
             ),
@@ -228,7 +283,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
           border: Border.all(
             color: hasFile ? AppColors.primary : AppColors.divider,
             width: hasFile ? 1.5 : 1,
-            style: hasFile ? BorderStyle.solid : BorderStyle.solid, 
+            style: hasFile ? BorderStyle.solid : BorderStyle.solid,
           ),
         ),
         child: Column(
@@ -252,10 +307,10 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
               child: Text(
                 _fileName ?? 'Chạm để chọn file (PDF, DOC)',
                 textAlign: TextAlign.center,
-                style: hasFile 
-                  ? AppTextStyles.bodyBold.copyWith(color: AppColors.primary)
-                  : AppTextStyles.bodyRegular,
-                maxLines: 1, 
+                style: hasFile
+                    ? AppTextStyles.bodyBold.copyWith(color: AppColors.primary)
+                    : AppTextStyles.bodyRegular,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -356,7 +411,8 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   Widget _buildPriceInput() {
     return Row(
       children: [
-        const Icon(Icons.monetization_on_outlined, color: AppColors.subtitle, size: 20),
+        const Icon(Icons.monetization_on_outlined,
+            color: AppColors.subtitle, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: TextFormField(
@@ -382,14 +438,59 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
       decoration: const InputDecoration(
         border: InputBorder.none,
         contentPadding: EdgeInsets.zero,
-        prefixIcon: Icon(Icons.lock_outline, color: AppColors.subtitle, size: 20),
+        prefixIcon:
+            Icon(Icons.lock_outline, color: AppColors.subtitle, size: 20),
         prefixIconConstraints: BoxConstraints(minWidth: 32),
       ),
       items: const [
-        DropdownMenuItem(value: 'public', child: Text('Công khai', style: AppTextStyles.bodyRegular)),
-        DropdownMenuItem(value: 'private', child: Text('Riêng tư', style: AppTextStyles.bodyRegular)),
+        DropdownMenuItem(
+            value: 'public',
+            child: Text('Công khai', style: AppTextStyles.bodyRegular)),
+        DropdownMenuItem(
+            value: 'private',
+            child: Text('Riêng tư', style: AppTextStyles.bodyRegular)),
       ],
       onChanged: (val) => setState(() => _privacy = val!),
+    );
+  }
+
+  Widget _buildAutoPostCheckbox() {
+    return InkWell(
+      onTap: () => setState(() => _autoCreatePost = !_autoCreatePost),
+      child: Row(
+        children: [
+          const Icon(Icons.post_add, color: AppColors.subtitle, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tự động tạo bài viết',
+                  style: AppTextStyles.bodyBold.copyWith(fontSize: 14),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Chia sẻ tài liệu lên trang cá nhân',
+                  style: AppTextStyles.bodyRegular.copyWith(
+                    fontSize: 12,
+                    color: AppColors.subtitle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Transform.scale(
+            scale: 0.9,
+            child: Switch(
+              value: _autoCreatePost,
+              onChanged: (val) => setState(() => _autoCreatePost = val),
+              activeColor: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

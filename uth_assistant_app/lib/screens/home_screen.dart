@@ -38,6 +38,9 @@ class _HomeScreenState extends State<HomeScreen>
   String? _username;
   String? _avatarUrl;
 
+  // ScrollController để scroll to top
+  final ScrollController _scrollController = ScrollController();
+
   @override
   bool get wantKeepAlive => true;
 
@@ -46,6 +49,26 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _fetchNewsData();
     _fetchPostsData();
+    _loadUserProfile();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // Method public để scroll to top và reload
+  void scrollToTopAndRefresh() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
+    _fetchNewsData(forceRefresh: true);
+    _fetchPostsData(forceRefresh: true);
     _loadUserProfile();
   }
 
@@ -152,11 +175,16 @@ class _HomeScreenState extends State<HomeScreen>
           await _loadUserProfile();
         },
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             _buildHeader(context),
             _buildNotificationSection(),
             _buildFeedTitle(),
             _buildPostList(),
+            // Thêm padding bottom để không bị BottomNavBar che
+            const SliverPadding(
+              padding: EdgeInsets.only(bottom: 80),
+            ),
           ],
         ),
       ),
@@ -196,7 +224,10 @@ class _HomeScreenState extends State<HomeScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Thông báo Đào tạo',
-                    style: AppTextStyles.beVietnam.copyWith(fontSize: 16,fontWeight: FontWeight.w600 ,color: AppColors.text)),
+                    style: AppTextStyles.beVietnam.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text)),
                 TextButton(
                   onPressed: () {
                     launchUrlHelper(
@@ -272,7 +303,11 @@ class _HomeScreenState extends State<HomeScreen>
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 6, 14, 8),
-        child: Text('Cộng đồng sinh viên', style: AppTextStyles.title.copyWith(fontSize: 18,fontWeight: FontWeight.w800 ,color: AppColors.primaryDark )),
+        child: Text('Cộng đồng sinh viên',
+            style: AppTextStyles.title.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primaryDark)),
       ),
     );
   }

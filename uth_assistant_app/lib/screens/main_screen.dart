@@ -20,18 +20,17 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedNavIndex = 0;
   int _fabKeyCounter = 0;
   final GlobalKey<State<HomeScreen>> _homeScreenKey = GlobalKey();
+  final GlobalKey<State<ProfileScreen>> _profileScreenKey = GlobalKey();
 
   late final List<Widget> _screens = [
     HomeScreen(key: _homeScreenKey, pageController: _pageController),
     const ChatbotScreen(),
     // DocumentScreen không cần lo về FAB nữa
-    const DocumentScreen(), 
-    const ProfileScreen(),
+    const DocumentScreen(),
+    ProfileScreen(key: _profileScreenKey),
   ];
 
   void _onItemTapped(int index) {
-    if (index == _selectedNavIndex) return;
-
     // Xử lý nút "Thêm" (Index 2 trên NavBar)
     if (index == 2) {
       Navigator.pushNamed(context, '/add_post').then((result) {
@@ -42,7 +41,25 @@ class _MainScreenState extends State<MainScreen> {
           }
         }
       });
-      return; 
+      return;
+    }
+
+    // Nếu tap lại tab hiện tại → Scroll to top + reload
+    if (index == _selectedNavIndex) {
+      if (index == 0) {
+        // Tab Trang chủ
+        final homeScreenState = _homeScreenKey.currentState;
+        if (homeScreenState != null) {
+          (homeScreenState as dynamic).scrollToTopAndRefresh();
+        }
+      } else if (index == 4) {
+        // Tab Hồ sơ
+        final profileScreenState = _profileScreenKey.currentState;
+        if (profileScreenState != null) {
+          (profileScreenState as dynamic).scrollToTopAndRefresh();
+        }
+      }
+      return;
     }
 
     _handleNavChange(index);
@@ -74,13 +91,12 @@ class _MainScreenState extends State<MainScreen> {
 
   // Hàm xử lý khi bấm nút Đăng tài liệu
   void _onUploadDocumentPressed() {
-    Navigator.push(
-       context, 
-       MaterialPageRoute(builder: (_) => const UploadDocumentScreen())
-     ).then((result) {
-        // Có thể cần dùng EventBus hoặc GlobalKey để báo cho DocumentScreen reload
-        // Nhưng đơn giản nhất là DocumentScreen tự reload khi chuyển tab hoặc pull-to-refresh
-     });
+    Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const UploadDocumentScreen()))
+        .then((result) {
+      // Có thể cần dùng EventBus hoặc GlobalKey để báo cho DocumentScreen reload
+      // Nhưng đơn giản nhất là DocumentScreen tự reload khi chuyển tab hoặc pull-to-refresh
+    });
   }
 
   @override
@@ -97,7 +113,7 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: _selectedNavIndex,
         onTap: _onItemTapped,
       ),
-      
+
       // --- LOGIC HIỂN THỊ FAB THEO TAB ---
       floatingActionButton: _buildFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

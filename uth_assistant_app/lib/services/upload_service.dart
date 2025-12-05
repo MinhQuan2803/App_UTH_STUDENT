@@ -28,7 +28,7 @@ class UploadService {
       throw Exception('Chỉ được upload tối đa 3 ảnh');
     }
 
-    final String? token = await _authService.getToken();
+    final String? token = await _authService.getValidToken();
     if (token == null) {
       throw Exception('Chưa đăng nhập');
     }

@@ -1,17 +1,17 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'auth_service.dart';
 
 /// Service xử lý followers/following relationships
 class RelationshipService {
   static const String baseUrl =
       'https://uthstudent.onrender.com/api/relationships';
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final AuthService _authService = AuthService();
 
-  /// Lấy token từ secure storage
+  /// Lấy token hợp lệ (tự động refresh nếu cần)
   Future<String?> _getToken() async {
-    return await _storage.read(key: 'accessToken');
+    return await _authService.getValidToken();
   }
 
   /// Lấy danh sách Followers (người theo dõi user)

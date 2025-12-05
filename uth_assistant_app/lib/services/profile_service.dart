@@ -37,7 +37,7 @@ class ProfileService {
       }
     }
 
-    final String? token = await _authService.getToken();
+    final String? token = await _authService.getValidToken();
 
     if (token == null) {
       throw Exception('401: Chưa đăng nhập');
@@ -94,7 +94,7 @@ class ProfileService {
       }
     }
 
-    final String? token = await _authService.getToken();
+    final String? token = await _authService.getValidToken();
 
     if (kDebugMode) {
       print('=== GET USER PROFILE ===');
@@ -147,7 +147,7 @@ class ProfileService {
     required String username,
     String? bio,
   }) async {
-    final String? token = await _authService.getToken();
+    final String? token = await _authService.getValidToken();
 
     if (token == null) {
       throw Exception('401: Chưa đăng nhập');
@@ -215,7 +215,7 @@ class ProfileService {
   Future<Map<String, dynamic>> updateAvatar(
     String imagePath, // Đổi từ imageBytes sang imagePath (giống upload_service)
   ) async {
-    final String? token = await _authService.getToken();
+    final String? token = await _authService.getValidToken();
 
     if (token == null) {
       throw Exception('401: Chưa đăng nhập');
