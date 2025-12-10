@@ -308,7 +308,7 @@ class AppAssets {
   static const String _imagesPicPath = 'assets/images_pic';
 
   // --- API URLS ---
-  static const bool _isLocal = false;
+  static const bool _isLocal = true;
   static const String _prodBaseUrl = 'https://uthstudent.onrender.com/api';
   // TODO: Thay '192.168.1.11' bằng IP Wifi của máy tính bạn
   static const String _localBaseUrl = 'http://192.168.2.4:5000/api';
@@ -414,6 +414,21 @@ class AppAssets {
   static const String paymentWaitingMessage = 'Đang chờ xác nhận thanh toán...';
   static const String paymentProcessingMessage =
       'Vui lòng hoàn tất thanh toán trên VNPay';
+
+  // Cashout messages
+  static const String cashoutSuccessTitle = 'Gửi yêu cầu thành công';
+  static const String cashoutSuccessMessage =
+      'Yêu cầu rút tiền đã được gửi. Vui lòng chờ Admin duyệt.';
+  static const String cashoutFailedTitle = 'Gửi yêu cầu thất bại';
+  static const String cashoutMinPointsTitle = 'Số điểm quá nhỏ';
+  static const String cashoutMinPointsMessage =
+      'Số điểm rút tối thiểu là 10 điểm (10.000đ).';
+  static const String cashoutInsufficientBalanceTitle = 'Số dư không đủ';
+  static const String cashoutInsufficientBalanceMessage =
+      'Số điểm rút vượt quá số dư hiện tại.';
+  static const String cashoutNoBankAccountTitle = 'Chưa có tài khoản ngân hàng';
+  static const String cashoutNoBankAccountMessage =
+      'Vui lòng thêm tài khoản ngân hàng để rút tiền.';
 
   // Validation messages
   static const String invalidPointsTitle = 'Số điểm không hợp lệ';

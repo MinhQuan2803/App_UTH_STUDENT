@@ -8,7 +8,7 @@ import '../models/point_history.dart';
 import '../models/payment_order.dart';
 import '../utils/dialog_utils.dart';
 import '../services/transaction_service.dart'; // Import service mới
-import '../models/transaction_model.dart';     // Import model mới
+import '../models/transaction_model.dart'; // Import model mới
 
 class TransactionHistoryScreen extends StatefulWidget {
   const TransactionHistoryScreen({super.key});
@@ -160,7 +160,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
               unselectedLabelStyle: AppTextStyles.bodyRegular,
               tabs: const [
                 Tab(text: 'Lịch sử điểm'),
-                Tab(text: 'Đơn thanh toán'),
+                Tab(text: 'Lịch sử nạp rút'),
               ],
             ),
           ),
@@ -298,7 +298,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
                     .copyWith(fontSize: 13, color: AppColors.subtitle),
               ),
               Text(
-                _dateFormatter.format(history.createdAt),
+                _dateFormatter.format(history.createdAtLocal),
                 style: AppTextStyles.postMeta.copyWith(fontSize: 12),
               ),
             ],
@@ -422,7 +422,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            'Ngày tạo: ${_dateFormatter.format(order.createdAt)}',
+            'Ngày tạo: ${_dateFormatter.format(order.createdAtLocal)}',
             style: AppTextStyles.postMeta.copyWith(fontSize: 12),
           ),
         ],
@@ -472,6 +472,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
         return 'Bình luận';
       case 'ADMIN':
         return 'Quản trị viên';
+      case 'BUY_DOCUMENT':
+        return 'Mua tài liệu';
+      case 'SELL_DOCUMENT':
+        return 'Đóng góp tài liệu';
+      case 'OTHER':
+        return 'Rút tiền';
       default:
         return source;
     }
@@ -523,7 +529,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
 
   String _translateStatus(String status) {
     switch (status) {
-      case 'SUCCESS':
+      case 'COMPLETED':
         return 'Thành công';
       case 'PENDING':
         return 'Đang xử lý';
@@ -536,7 +542,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'SUCCESS':
+      case 'COMPLETED':
         return AppColors.success;
       case 'PENDING':
         return AppColors.warning;

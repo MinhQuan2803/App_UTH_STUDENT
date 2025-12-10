@@ -6,16 +6,20 @@ import '../screens/image_viewer_screen.dart'; // Import ImageViewer
 
 class AnimatedWaveHeader extends StatefulWidget {
   final VoidCallback? onSearchPressed;
+  final VoidCallback? onNotificationPressed;
   final String username;
   final String? avatarUrl; // Avatar từ server
   final VoidCallback? onProfileTap; // Callback khi nhấn vào profile
+  final int unreadCount; // Số thông báo chưa đọc
 
   const AnimatedWaveHeader({
     super.key,
     this.onSearchPressed,
+    this.onNotificationPressed,
     required this.username,
     this.avatarUrl,
     this.onProfileTap,
+    this.unreadCount = 0,
   });
 
   @override
@@ -124,13 +128,50 @@ class _AnimatedWaveHeaderState extends State<AnimatedWaveHeader>
                             AppColors.white, BlendMode.srcIn)),
                     onPressed: widget.onSearchPressed,
                   ),
-                  // Nút Thông báo
-                  IconButton(
-                    icon: SvgPicture.asset(AppAssets.iconBell,
-                        width: 22,
-                        colorFilter: const ColorFilter.mode(
-                            AppColors.white, BlendMode.srcIn)),
-                    onPressed: () {},
+                  // Nút Thông báo với badge
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        icon: SvgPicture.asset(AppAssets.iconBell,
+                            width: 22,
+                            colorFilter: const ColorFilter.mode(
+                                AppColors.white, BlendMode.srcIn)),
+                        onPressed: widget.onNotificationPressed,
+                      ),
+                      if (widget.unreadCount > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.white,
+                                width: 1.5,
+                              ),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            child: Text(
+                              widget.unreadCount > 99
+                                  ? '99+'
+                                  : '${widget.unreadCount}',
+                              style: const TextStyle(
+                                color: AppColors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                height: 1.0,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),

@@ -34,7 +34,7 @@ class ApiClient {
     Duration timeout = const Duration(seconds: 90),
   }) async {
     return _makeRequestWithRetry(() async {
-      final token = await _authService.getToken();
+      final token = await _authService.getValidToken();
       final requestHeaders = {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -58,7 +58,7 @@ class ApiClient {
     Duration timeout = const Duration(seconds: 90),
   }) async {
     return _makeRequestWithRetry(() async {
-      final token = await _authService.getToken();
+      final token = await _authService.getValidToken();
       final requestHeaders = {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -81,7 +81,7 @@ class ApiClient {
     Duration timeout = const Duration(seconds: 90),
   }) async {
     return _makeRequestWithRetry(() async {
-      final token = await _authService.getToken();
+      final token = await _authService.getValidToken();
       final requestHeaders = {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',

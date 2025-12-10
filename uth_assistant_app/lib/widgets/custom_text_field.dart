@@ -1,26 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // THÊM IMPORT NÀY
+import 'package:flutter/services.dart';
 import '../config/app_theme.dart';
 
 class CustomTextField extends StatelessWidget {
   final String hintText;
+  final String? labelText;
   final bool obscureText;
   final TextEditingController? controller;
   final FocusNode? focusNode;
   final TextInputType? keyboardType;
-  // --- BỔ SUNG CÁC THAM SỐ MỚI ---
   final int? maxLines;
   final List<TextInputFormatter>? inputFormatters;
+  final IconData? prefixIcon;
+  final Function(String)? onChanged;
 
   const CustomTextField({
     super.key,
     required this.hintText,
+    this.labelText,
     this.obscureText = false,
     this.controller,
     this.focusNode,
     this.keyboardType,
-    this.maxLines, // Thêm vào constructor
-    this.inputFormatters, // Thêm vào constructor
+    this.maxLines,
+    this.inputFormatters,
+    this.prefixIcon,
+    this.onChanged,
   });
 
   @override
@@ -30,13 +35,21 @@ class CustomTextField extends StatelessWidget {
       focusNode: focusNode,
       obscureText: obscureText,
       keyboardType: keyboardType,
-      // --- SỬ DỤNG CÁC THAM SỐ MỚI ---
-      maxLines: maxLines ?? 1, // Mặc định là 1 dòng nếu không truyền
+      maxLines: maxLines ?? 1,
       inputFormatters: inputFormatters,
+      onChanged: onChanged,
       style: AppTextStyles.bodyBold.copyWith(fontSize: 16),
       decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: AppTextStyles.bodyRegular.copyWith(
+          color: AppColors.subtitle,
+          fontSize: 14,
+        ),
         hintText: hintText,
         hintStyle: AppTextStyles.hintText.copyWith(fontSize: 16),
+        prefixIcon: prefixIcon != null
+            ? Icon(prefixIcon, color: AppColors.primary)
+            : null,
         filled: true,
         fillColor: AppColors.inputBackground,
         border: OutlineInputBorder(
@@ -44,16 +57,16 @@ class CustomTextField extends StatelessWidget {
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-           borderRadius: BorderRadius.circular(16),
-           borderSide: const BorderSide(color: AppColors.divider),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.divider),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.primary, width: 2.0),
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       ),
     );
   }
 }
-

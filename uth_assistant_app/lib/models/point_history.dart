@@ -11,6 +11,9 @@ class PointHistory {
   final String? eventId;
   final DateTime createdAt;
 
+  // Getter để hiển thị thời gian đúng múi giờ (tạm thời cộng 7 tiếng do backend lỗi)
+  DateTime get createdAtLocal => createdAt.add(const Duration(hours: 7));
+
   PointHistory({
     required this.id,
     required this.userId,

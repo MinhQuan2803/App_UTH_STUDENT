@@ -7,12 +7,14 @@ class BalanceCard extends StatelessWidget {
   final int balance; // Số dư hiện tại
   final bool isLoading; // Trạng thái đang tải
   final VoidCallback onHistoryTap; // Callback khi nhấn nút lịch sử
+  final VoidCallback? onWithdrawTap; // Callback khi nhấn nút rút tiền
 
   const BalanceCard({
     super.key,
     required this.balance,
     required this.isLoading,
     required this.onHistoryTap,
+    this.onWithdrawTap,
   });
 
   @override
@@ -131,6 +133,41 @@ class BalanceCard extends StatelessWidget {
                     ),
                   ],
                 ),
+          if (onWithdrawTap != null) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: onWithdrawTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.white.withOpacity(0.2),
+                  borderRadius:
+                      BorderRadius.circular(AppAssets.borderRadiusSmall),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: AppColors.white,
+                      size: AppAssets.iconSizeSmall,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Rút tiền',
+                      style: AppTextStyles.bodyRegular.copyWith(
+                        color: AppColors.white,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

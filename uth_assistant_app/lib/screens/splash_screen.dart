@@ -93,7 +93,7 @@ class _SplashScreenState extends State<SplashScreen>
                           width: 12,
                           height: 12,
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
+                            color: AppColors.white,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -110,7 +110,7 @@ class _SplashScreenState extends State<SplashScreen>
             Text(
               'Đang kết nối...',
               style: AppTextStyles.bodyRegular.copyWith(
-                color: AppColors.primary,
+                color: AppColors.white,
                 fontWeight: FontWeight.w500,
                 fontSize: 15,
               ),

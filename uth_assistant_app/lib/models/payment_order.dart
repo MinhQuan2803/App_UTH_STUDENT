@@ -6,6 +6,9 @@ class PaymentOrder {
   final String paymentProvider; // VNPAY, MOMO
   final DateTime createdAt;
 
+  // Tạm thời cộng 7 tiếng vì backend đang bị lỗi timezone
+  DateTime get createdAtLocal => createdAt.add(const Duration(hours: 7));
+
   PaymentOrder({
     required this.id,
     required this.amountVND,

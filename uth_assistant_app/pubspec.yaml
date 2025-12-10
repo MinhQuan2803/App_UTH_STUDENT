@@ -28,7 +28,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   jwt_decoder: ^2.0.1
   photo_view: ^0.15.0  # Thư viện xem ảnh với zoom/pan
-  
+  shared_preferences: ^2.2.2
   # Firebase packages cho push notification
   firebase_core: ^3.8.1
   firebase_messaging: ^15.1.5

@@ -12,6 +12,8 @@ import '../services/payment_service.dart';
 import '../utils/dialog_utils.dart';
 import 'transaction_history_screen.dart';
 import 'webview_screen.dart';
+import 'withdraw_screen.dart';
+import 'cashout_history_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -392,6 +394,20 @@ class _WalletScreenState extends State<WalletScreen> {
                       builder: (context) => const TransactionHistoryScreen(),
                     ),
                   );
+                },
+                onWithdrawTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WithdrawScreen(
+                        currentBalance: _currentBalance,
+                      ),
+                    ),
+                  );
+                  // Reload balance if withdraw was successful
+                  if (result == true && mounted) {
+                    _loadUserBalance();
+                  }
                 },
               ),
               const SizedBox(height: AppAssets.paddingLarge),

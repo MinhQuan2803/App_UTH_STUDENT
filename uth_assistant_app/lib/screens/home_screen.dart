@@ -8,10 +8,12 @@ import '../widgets/skeleton_screens.dart'; // Import Skeleton Loading
 import '../services/news_service.dart';
 import '../services/post_service.dart';
 import '../services/profile_service.dart';
+import '../services/notification_service.dart';
 import '../models/post_model.dart';
 import '../utils/launcher_util.dart';
 import '../services/auth_service.dart';
 import 'package:flutter/foundation.dart'; // Cho kDebugMode
+import 'notification_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final PageController pageController;
@@ -35,8 +37,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
+  final NotificationService _notificationService = NotificationService();
   String? _username;
   String? _avatarUrl;
+  int _unreadNotificationCount = 0;
 
   // ScrollController để scroll to top
   final ScrollController _scrollController = ScrollController();
@@ -50,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen>
     _fetchNewsData();
     _fetchPostsData();
     _loadUserProfile();
+    _loadUnreadCount();
   }
 
   @override
@@ -70,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen>
     _fetchNewsData(forceRefresh: true);
     _fetchPostsData(forceRefresh: true);
     _loadUserProfile();
+    _loadUnreadCount();
   }
 
   Future<void> _loadUserProfile() async {
@@ -87,6 +93,20 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         setState(() => _username = username);
       }
+    }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await _notificationService.getUnreadCount();
+      if (mounted) {
+        setState(() {
+          _unreadNotificationCount = count;
+        });
+      }
+    } catch (e) {
+      // Ignore error, just don't show badge
+      if (kDebugMode) print('Error loading unread count: $e');
     }
   }
 
@@ -162,6 +182,16 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.pushNamed(context, '/search');
   }
 
+  void _navigateToNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NotificationScreen()),
+    ).then((_) {
+      // Reload unread count sau khi quay về
+      _loadUnreadCount();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -173,6 +203,7 @@ class _HomeScreenState extends State<HomeScreen>
           await _fetchNewsData(forceRefresh: true);
           await _fetchPostsData(forceRefresh: true);
           await _loadUserProfile();
+          await _loadUnreadCount();
         },
         child: CustomScrollView(
           controller: _scrollController,
@@ -202,8 +233,10 @@ class _HomeScreenState extends State<HomeScreen>
       flexibleSpace: FlexibleSpaceBar(
         background: AnimatedWaveHeader(
           onSearchPressed: _navigateToSearch,
+          onNotificationPressed: _navigateToNotifications,
           username: _username ?? '...',
           avatarUrl: _avatarUrl,
+          unreadCount: _unreadNotificationCount,
           onProfileTap: () {
             // Chuyển đến tab Profile (index 3)
             widget.pageController.jumpToPage(3);
