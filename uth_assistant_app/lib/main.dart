@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -26,6 +27,9 @@ import 'screens/document_screen.dart';
 import 'screens/document_detail_screen.dart';
 import 'screens/document_reader_screen.dart';
 import 'models/document_model.dart';
+
+// Debug screens (chỉ trong debug mode)
+import 'screens/token_debug_screen.dart';
 
 import 'services/fcm_service.dart';
 
@@ -88,6 +92,9 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => const SignupScreen(),
         '/search': (context) => const SearchScreen(),
         '/wallet': (context) => const WalletScreen(),
+
+        // --- DEBUG ROUTES (XÓA TRONG PRODUCTION) ---
+        if (kDebugMode) '/token_debug': (context) => const TokenDebugScreen(),
 
         // --- DOCUMENT ROUTES ---
         '/documents': (context) => const DocumentScreen(),

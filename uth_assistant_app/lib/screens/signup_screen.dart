@@ -78,7 +78,7 @@ class _SignupScreenState extends State<SignupScreen>
 
     // 2. Validation phía client (trước khi gọi API)
     if (_usernameController.text.trim().isEmpty) {
-      _showErrorSnackBar('Vui lòng nhập tên đăng nhập!');
+      _showErrorSnackBar('Vui lòng nhập tên hiển thị!');
       return;
     }
     // Kiểm tra email (định dạng cơ bản)
@@ -217,7 +217,7 @@ class _SignupScreenState extends State<SignupScreen>
                 ),
                 const SizedBox(height: 24.0),
                 CustomTextField(
-                  hintText: 'Tên đăng nhập (3-30 ký tự)',
+                  hintText: 'Tên hiển thị (3-30 ký tự)',
                   controller: _usernameController,
                   focusNode: _usernameFocus,
                   keyboardType: TextInputType.text,

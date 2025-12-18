@@ -7,6 +7,7 @@ import '../widgets/custom_notification.dart';
 import '../widgets/profile_action_button.dart';
 import '../widgets/home_post_card.dart';
 import '../widgets/skeleton_screens.dart';
+import '../widgets/report_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../services/follow_service.dart';
@@ -283,17 +284,37 @@ class _ProfileScreenState extends State<ProfileScreen>
             ListTile(
               leading: const Icon(Icons.report_gmailerrorred_outlined),
               title: const Text("Báo cáo"),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context); // Đóng bottom sheet
+                _showReportDialog(); // Hiện dialog báo cáo
+              },
             ),
             ListTile(
               leading: const Icon(Icons.block, color: Colors.red),
               title: const Text("Chặn người dùng",
                   style: TextStyle(color: Colors.red)),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                CustomNotification.info(context, 'Tính năng đang phát triển');
+              },
             ),
           ],
           const SizedBox(height: 20),
         ],
+      ),
+    );
+  }
+
+  // Hiển thị dialog báo cáo user
+  void _showReportDialog() {
+    if (_user == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => ReportDialog(
+        targetId: _user!['_id'] ?? _user!['id'],
+        targetType: 'User',
+        targetName: _user!['username'] ?? 'User',
       ),
     );
   }

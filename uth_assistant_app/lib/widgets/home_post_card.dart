@@ -8,6 +8,7 @@ import '../utils/time_formatter.dart';
 import '../screens/add_post_screen.dart';
 import '../screens/image_viewer_screen.dart';
 import 'custom_notification.dart';
+import 'report_dialog.dart';
 import 'package:flutter/foundation.dart'; // Cho kDebugMode
 
 class HomePostCard extends StatefulWidget {
@@ -212,8 +213,21 @@ class _HomePostCardState extends State<HomePostCard> {
         ],
       ),
     );
-  } // Xử lý khi nhấn nút Sửa
+  }
 
+  // Xử lý khi nhấn báo cáo
+  void _showReportDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => ReportDialog(
+        targetId: widget.post.id,
+        targetType: 'Post',
+        targetName: 'Bài viết của ${widget.post.author.username}',
+      ),
+    );
+  }
+
+  // Xử lý khi nhấn nút Sửa
   void _editPost() async {
     final result = await Navigator.push(
       context,
@@ -460,7 +474,7 @@ class _HomePostCardState extends State<HomePostCard> {
               else if (value == 'delete')
                 _deletePost();
               else if (value == 'report') {
-                CustomNotification.info(context, 'Tính năng đang phát triển');
+                _showReportDialog();
               }
             },
             itemBuilder: (context) {
