@@ -12,7 +12,28 @@
 
 **UTH Student App** là nền tảng mạng xã hội dành riêng cho sinh viên UTH, được phát triển bởi chính sinh viên UTH, giúp kết nối cộng đồng học tập, chia sẻ tài liệu, trao đổi kiến thức và quản lý hoạt động học tập hiệu quả.
 
-![App Screenshot](assets/images/app_icon.png)
+---
+
+## 📊 Screenshots
+
+<div align="center">
+
+### 🏠 Màn hình chính
+<img src="uth_assistant_app/assets/screenshots/splashscreen.png" width="200" alt="Splash Screen"/> &nbsp;&nbsp;&nbsp;
+<img src="uth_assistant_app/assets/screenshots/homescreen.png" width="200" alt="Home Screen"/> &nbsp;&nbsp;&nbsp;
+<img src="uth_assistant_app/assets/screenshots/documentscreen.png" width="200" alt="Document Screen"/>
+
+**Màn hình khởi động** → **Trang chủ bài viết** → **Thư viện tài liệu**
+
+---
+
+### 🤖 Chatbot AI & 💰 Ví điểm
+<img src="uth_assistant_app/assets/screenshots/chatbotscreen.png" width="200" alt="Chatbot Screen"/> &nbsp;&nbsp;&nbsp;
+<img src="uth_assistant_app/assets/screenshots/walletscreen.png" width="200" alt="Wallet Screen"/>
+
+**Trợ lý ảo UTH Assistant** hỗ trợ 24/7 | **Ví điểm** với thanh toán VNPay/MoMo
+
+</div>
 
 ---
 
@@ -531,31 +552,6 @@ flutter build ios --release
 3. Kiểm tra kết nối internet ổn định
 4. Test upload file nhỏ trước (< 5MB)
 5. Đảm bảo đã cấp quyền truy cập file cho app
-
----
-
-
-
-## 📊 Screenshots
-
-<div align="center">
-
-### 🏠 Màn hình chính
-<img src="assets/screenshots/splashscreen.png" width="200" alt="Splash Screen"/> &nbsp;&nbsp;&nbsp;
-<img src="assets/screenshots/homescreen.png" width="200" alt="Home Screen"/> &nbsp;&nbsp;&nbsp;
-<img src="assets/screenshots/documentscreen.png" width="200" alt="Document Screen"/>
-
-**Màn hình khởi động** → **Trang chủ bài viết** → **Thư viện tài liệu**
-
----
-
-### 🤖 Chatbot AI & 💰 Ví điểm
-<img src="assets/screenshots/chatbotscreen.png" width="200" alt="Chatbot Screen"/> &nbsp;&nbsp;&nbsp;
-<img src="assets/screenshots/walletscreen.png" width="200" alt="Wallet Screen"/>
-
-**Trợ lý ảo UTH Assistant** hỗ trợ 24/7 | **Ví điểm** với thanh toán VNPay/MoMo
-
-</div>
 
 ---
 
