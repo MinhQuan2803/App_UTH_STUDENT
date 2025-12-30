@@ -14,14 +14,14 @@ class TokenDebugScreen extends StatefulWidget {
 
 class _TokenDebugScreenState extends State<TokenDebugScreen> {
   final AuthService _authService = AuthService();
-  
+
   String _accessToken = '';
   String _refreshToken = '';
   String _tokenStatus = '';
   Duration _remainingTime = Duration.zero;
   bool _isExpired = false;
   Map<String, dynamic> _decodedToken = {};
-  
+
   @override
   void initState() {
     super.initState();
@@ -32,19 +32,19 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
     try {
       final accessToken = await _authService.getToken();
       final refreshToken = await _authService.getRefreshToken();
-      
+
       if (accessToken != null) {
         final decoded = JwtDecoder.decode(accessToken);
         final remaining = JwtDecoder.getRemainingTime(accessToken);
         final expired = JwtDecoder.isExpired(accessToken);
-        
+
         setState(() {
           _accessToken = accessToken.substring(0, 50) + '...';
           _refreshToken = refreshToken?.substring(0, 50) ?? 'N/A';
           _decodedToken = decoded;
           _remainingTime = remaining;
           _isExpired = expired;
-          
+
           if (expired) {
             _tokenStatus = '❌ Token đã hết hạn';
           } else if (remaining.inSeconds < 120) {
@@ -69,10 +69,10 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
     setState(() {
       _tokenStatus = '🔄 Đang refresh...';
     });
-    
+
     try {
       final result = await _authService.refreshAccessToken();
-      
+
       switch (result) {
         case RefreshResult.success:
           setState(() {
@@ -102,10 +102,10 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
     setState(() {
       _tokenStatus = '🔄 Đang lấy valid token...';
     });
-    
+
     try {
       final token = await _authService.getValidToken();
-      
+
       if (token != null) {
         setState(() {
           _tokenStatus = '✅ getValidToken() success';
@@ -164,9 +164,9 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Token Info
             _buildInfoCard(
               'Thông Tin Token',
@@ -177,9 +177,9 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
                 _buildInfoRow('Username', _decodedToken['username'] ?? 'N/A'),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Access Token
             _buildInfoCard(
               'Access Token',
@@ -190,9 +190,9 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Refresh Token
             _buildInfoCard(
               'Refresh Token',
@@ -203,9 +203,9 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Action Buttons
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -220,9 +220,7 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
-                
                 const SizedBox(height: 12),
-                
                 ElevatedButton.icon(
                   onPressed: _testRefreshToken,
                   icon: const Icon(Icons.sync),
@@ -233,9 +231,7 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
-                
                 const SizedBox(height: 12),
-                
                 ElevatedButton.icon(
                   onPressed: _testGetValidToken,
                   icon: const Icon(Icons.verified_user),
@@ -246,9 +242,7 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
-                
                 const SizedBox(height: 12),
-                
                 ElevatedButton.icon(
                   onPressed: () {
                     _authService.signOut();
@@ -263,9 +257,9 @@ class _TokenDebugScreenState extends State<TokenDebugScreen> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Help Text
             Container(
               padding: const EdgeInsets.all(12),

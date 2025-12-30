@@ -40,7 +40,14 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       if (token != null) {
-        Navigator.pushReplacementNamed(context, '/home');
+        // Đã đăng nhập, check xem đã complete profile chưa
+        final isProfileCompleted = await _authService.isProfileCompleted();
+
+        if (isProfileCompleted) {
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          Navigator.pushReplacementNamed(context, '/complete_profile');
+        }
       } else {
         Navigator.pushReplacementNamed(context, '/login');
       }

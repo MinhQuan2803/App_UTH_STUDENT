@@ -327,4 +327,108 @@ class ProfileService {
     _userProfilesFetchTime.clear();
     if (kDebugMode) print('✓ Profile cache cleared');
   }
+
+  /// Complete profile - Cập nhật realname và avatar cho user mới
+  /// POST /api/users/complete-profile
+  Future<Map<String, dynamic>> completeProfile({
+    required String realname,
+    dynamic avatarFile, // File? cho mobile hoặc XFile? cho web
+  }) async {
+    final String? token = await _authService.getValidToken();
+
+    if (token == null) {
+      throw Exception('401: Chưa đăng nhập');
+    }
+
+    if (kDebugMode) {
+      print('=== COMPLETE PROFILE ===');
+      print('Realname: $realname');
+      print('Has avatar: ${avatarFile != null}');
+    }
+
+    final uri = Uri.parse('$_baseUrl/complete-profile');
+    final request = http.MultipartRequest('POST', uri);
+
+    // Headers
+    request.headers['Authorization'] = 'Bearer $token';
+
+    // Body fields
+    request.fields['realname'] = realname;
+
+    // Avatar file (optional)
+    if (avatarFile != null) {
+      String? imagePath;
+      String? fileName;
+
+      // Xử lý File hoặc XFile
+      if (avatarFile.runtimeType.toString() == 'File' ||
+          avatarFile.runtimeType.toString() == '_File') {
+        // Mobile: File
+        imagePath = avatarFile.path;
+        fileName = imagePath?.split('/').last;
+      } else if (avatarFile.runtimeType.toString().contains('XFile')) {
+        // Web: XFile
+        imagePath = avatarFile.path;
+        fileName = avatarFile.name;
+      }
+
+      if (imagePath != null && fileName != null) {
+        final mimeType = lookupMimeType(imagePath) ?? 'image/jpeg';
+        final mimeTypeParts = mimeType.split('/');
+
+        final file = await http.MultipartFile.fromPath(
+          'file', // Field name cho backend
+          imagePath,
+          filename: fileName,
+          contentType: MediaType(mimeTypeParts[0], mimeTypeParts[1]),
+        );
+
+        request.files.add(file);
+
+        if (kDebugMode) {
+          print('✓ Avatar file added: $fileName');
+          print('  Content-Type: ${file.contentType}');
+        }
+      }
+    }
+
+    final streamedResponse =
+        await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (kDebugMode) {
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+    }
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+
+      // Lưu isProfileCompleted vào storage
+      await _authService.saveProfileCompletedStatus(true);
+
+      // Xóa cache để reload profile mới
+      clearCache();
+
+      if (kDebugMode) {
+        print('✓ Profile completed successfully');
+        print('Message: ${responseData['message']}');
+      }
+
+      return responseData;
+    } else if (response.statusCode == 400) {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? 'Dữ liệu không hợp lệ');
+    } else if (response.statusCode == 401) {
+      throw Exception('401: Phiên đăng nhập không hợp lệ');
+    } else {
+      try {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Lỗi không xác định');
+      } catch (e) {
+        throw Exception(
+            'Lỗi server (${response.statusCode}): Không thể hoàn thành hồ sơ');
+      }
+    }
+  }
 }

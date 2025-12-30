@@ -92,6 +92,8 @@ class _LoginScreenState extends State<LoginScreen>
 
     final bool success = responseData['success'] ?? false;
     final String message = responseData['message'] ?? 'Lỗi không xác định';
+    final bool isProfileCompleted =
+        responseData['isProfileCompleted'] ?? false;
 
     if (success) {
       // Gửi FCM token lên server sau khi login thành công
@@ -104,7 +106,14 @@ class _LoginScreenState extends State<LoginScreen>
       // Đợi animation xong rồi mới chuyển trang
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+          // Check isProfileCompleted để redirect đúng màn hình
+          if (isProfileCompleted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/home', (route) => false);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/complete_profile', (route) => false);
+          }
         }
       });
     } else {

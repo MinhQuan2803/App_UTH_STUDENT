@@ -426,7 +426,7 @@ class _HomePostCardState extends State<HomePostCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.post.author.username,
+                  Text(widget.post.author.displayName,
                       style: AppTextStyles.postName.copyWith(fontSize: 14)),
                   const SizedBox(height: 1),
                   Row(

@@ -17,7 +17,7 @@ class ReportService {
     }
     return url;
   }
-  
+
   final AuthService _authService = AuthService();
 
   /// Gửi báo cáo
@@ -52,14 +52,16 @@ class ReportService {
           'description': description,
       };
 
-      final response = await http.post(
-        Uri.parse('$_baseUrl/reports'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode(body),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/reports'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: json.encode(body),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (kDebugMode) {
         print('Status: ${response.statusCode}');
@@ -69,7 +71,7 @@ class ReportService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(utf8.decode(response.bodyBytes));
         final message = data['message'] ?? 'Đã gửi báo cáo';
-        
+
         if (kDebugMode) print('✓ Report sent successfully');
         return message;
       } else {

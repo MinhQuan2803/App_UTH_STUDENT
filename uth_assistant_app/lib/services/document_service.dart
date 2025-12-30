@@ -145,22 +145,38 @@ class DocumentService {
 
   // 1. Tab Khám phá (Public Feed)
   Future<List<DocumentModel>> getPublicDocuments({int page = 1}) async {
-    return _fetchDocuments('$_baseUrl?page=$page&limit=1000');
+    final uri = Uri.parse(_baseUrl).replace(queryParameters: {
+      'page': page.toString(),
+      'limit': '1000',
+    });
+    return _fetchDocuments(uri.toString());
   }
 
   // 2. Tab Đã đăng (My Uploads)
   Future<List<DocumentModel>> getMyUploadedDocuments({int page = 1}) async {
-    return _fetchDocuments('$_baseUrl/me?page=$page&limit=1000');
+    final uri = Uri.parse('$_baseUrl/me').replace(queryParameters: {
+      'page': page.toString(),
+      'limit': '1000',
+    });
+    return _fetchDocuments(uri.toString());
   }
 
   // 3. Tab Tủ sách (Purchased)
   Future<List<DocumentModel>> getPurchasedDocuments({int page = 1}) async {
-    return _fetchDocuments('$_baseUrl/purchased?page=$page&limit=1000');
+    final uri = Uri.parse('$_baseUrl/purchased').replace(queryParameters: {
+      'page': page.toString(),
+      'limit': '1000',
+    });
+    return _fetchDocuments(uri.toString());
   }
 
   // 4. Tab Yêu thích (Liked)
   Future<List<DocumentModel>> getLikedDocuments({int page = 1}) async {
-    return _fetchDocuments('$_baseUrl/liked?page=$page&limit=10');
+    final uri = Uri.parse('$_baseUrl/liked').replace(queryParameters: {
+      'page': page.toString(),
+      'limit': '10',
+    });
+    return _fetchDocuments(uri.toString());
   }
 
   // Hàm helper để gọi API và parse list
@@ -174,25 +190,6 @@ class DocumentService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-
-        // ============================================================
-        // [DEBUG] THÊM ĐOẠN NÀY ĐỂ SOI DỮ LIỆU TỦ SÁCH
-        // ============================================================
-        if (url.contains('purchased')) {
-          print("==================================================");
-          print("🛠 DEBUG API TỦ SÁCH (RAW JSON):");
-          final listDocs = data['documents'] as List;
-
-          if (listDocs.isNotEmpty) {
-            // In ra phần tử đầu tiên để kiểm tra xem có trường 'url' và 'ownerId' không
-            // Dùng jsonEncode để in ra dạng chuỗi dễ đọc
-            print("📄 Document[0]: ${jsonEncode(listDocs[0])}");
-          } else {
-            print("⚠️ Danh sách trả về RỖNG!");
-          }
-          print("==================================================");
-        }
-        // ============================================================
 
         return (data['documents'] as List)
             .map((e) => DocumentModel.fromJson(e))
@@ -276,5 +273,25 @@ class DocumentService {
       final errorData = jsonDecode(response.body);
       throw Exception(errorData['message'] ?? 'Lỗi khi cập nhật tài liệu');
     }
+  }
+
+  /// Helper: Lấy URL phù hợp để mở document (full hoặc preview)
+  String getDocumentUrlToOpen(DocumentModel doc) {
+    // Nếu có quyền đầy đủ → dùng URL gốc
+    if (doc.isFullAccess && doc.url != null && doc.url!.isNotEmpty) {
+      return doc.url!;
+    }
+
+    // Nếu không có quyền → dùng previewUrl
+    if (doc.previewUrl.isNotEmpty) {
+      return doc.previewUrl;
+    }
+
+    throw Exception('Không có URL để mở tài liệu');
+  }
+
+  /// Kiểm tra có thể xem preview không
+  bool canPreviewDocument(DocumentModel doc) {
+    return doc.getSafePreviewPages() > 0 || doc.isFullAccess;
   }
 }

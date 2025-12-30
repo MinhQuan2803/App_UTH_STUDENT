@@ -2,6 +2,7 @@
 class Author {
   final String id;
   final String username;
+  final String? realname;
   final String? avatarUrl;
   final int followerCount;
   final int followingCount;
@@ -10,6 +11,7 @@ class Author {
   Author({
     required this.id,
     required this.username,
+    this.realname,
     this.avatarUrl,
     this.followerCount = 0,
     this.followingCount = 0,
@@ -20,6 +22,7 @@ class Author {
     return Author(
       id: json['_id'] ?? '',
       username: json['username'] ?? 'Người dùng ẩn',
+      realname: json['realname'],
       avatarUrl: json['avatarUrl'],
       followerCount: json['followerCount'] ?? 0,
       followingCount: json['followingCount'] ?? 0,
@@ -28,6 +31,9 @@ class Author {
           : DateTime.now(),
     );
   }
+
+  // Getter để lấy tên hiển thị (ưu tiên realname, fallback username)
+  String get displayName => realname ?? username;
 }
 
 // Model cho bài viết

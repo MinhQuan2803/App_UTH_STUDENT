@@ -16,6 +16,7 @@ import 'screens/verification_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/post_detail_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/complete_profile_screen.dart';
 import 'models/post_model.dart';
 import 'screens/user_posts_screen.dart';
 import 'screens/wallet_screen.dart';
@@ -92,6 +93,7 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => const SignupScreen(),
         '/search': (context) => const SearchScreen(),
         '/wallet': (context) => const WalletScreen(),
+        '/complete_profile': (context) => const CompleteProfileScreen(),
 
         // --- DEBUG ROUTES (XÓA TRONG PRODUCTION) ---
         if (kDebugMode) '/token_debug': (context) => const TokenDebugScreen(),

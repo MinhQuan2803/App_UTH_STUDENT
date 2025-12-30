@@ -21,6 +21,7 @@ class AuthService {
   static const String _tokenKey = 'accessToken';
   static const String _refreshTokenKey = 'refreshToken';
   static const String _usernameKey = 'username';
+  static const String _profileCompletedKey = 'isProfileCompleted';
 
   // ... (Các hàm signUp, signIn giữ nguyên) ...
 
@@ -99,6 +100,7 @@ class AuthService {
       if (response.statusCode == 200) {
         final accessToken = body['accessToken'];
         final refreshToken = body['refreshToken'];
+        final isProfileCompleted = body['isProfileCompleted'] ?? false;
 
         if (accessToken != null && accessToken is String) {
           Map<String, dynamic> decodedToken;
@@ -125,6 +127,11 @@ class AuthService {
               await _storage.write(key: 'userId', value: userId);
             }
 
+            // Lưu isProfileCompleted
+            await _storage.write(
+                key: _profileCompletedKey,
+                value: isProfileCompleted.toString());
+
             // Logic fallback username cũ của bạn (giữ nguyên để app hiển thị đúng)
             if (username != null && username.isNotEmpty) {
               await _storage.write(key: _usernameKey, value: username);
@@ -149,7 +156,11 @@ class AuthService {
           } catch (storageError) {
             // Ignore storage error
           }
-          return {'success': true, 'message': message};
+          return {
+            'success': true,
+            'message': message,
+            'isProfileCompleted': isProfileCompleted
+          };
         } else {
           return {
             'success': false,
@@ -185,6 +196,7 @@ class AuthService {
       await _storage.delete(key: _refreshTokenKey);
       await _storage.delete(key: _usernameKey);
       await _storage.delete(key: 'userId');
+      await _storage.delete(key: _profileCompletedKey);
 
       navigatorKey.currentState?.pushNamedAndRemoveUntil(
         '/login',
@@ -294,6 +306,15 @@ class AuthService {
 
   Future<String?> getUserId() async {
     return await _storage.read(key: 'userId');
+  }
+
+  Future<bool> isProfileCompleted() async {
+    final value = await _storage.read(key: _profileCompletedKey);
+    return value == 'true';
+  }
+
+  Future<void> saveProfileCompletedStatus(bool status) async {
+    await _storage.write(key: _profileCompletedKey, value: status.toString());
   }
 
   // ... (Hàm refreshAccessToken giữ nguyên) ...

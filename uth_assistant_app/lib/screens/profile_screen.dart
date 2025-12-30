@@ -308,7 +308,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   // Hiển thị dialog báo cáo user
   void _showReportDialog() {
     if (_user == null) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => ReportDialog(
@@ -337,7 +337,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildUserInfoSection(bool isOwner) {
     final String? avatarUrl = _user!['avatarUrl'];
-    final String username = _user!['username'] ?? 'User';
+    final String realname = _user!['realname'] ?? 'User';
     final String? bio = _user!['bio'];
     final bool isFollowing = _user!['isFollowing'] ?? false;
 
@@ -363,7 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       : null,
                   child: avatarUrl == null || avatarUrl.isEmpty
                       ? Text(
-                          username.isNotEmpty ? username[0].toUpperCase() : 'U',
+                          realname.isNotEmpty ? realname[0].toUpperCase() : 'U',
                           style: AppTextStyles.heading1.copyWith(fontSize: 24),
                         )
                       : null,
@@ -379,7 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       Padding(
                         padding: const EdgeInsets.only(left: 10.0),
                         child: Text(
-                          username,
+                          realname,
                           style: AppTextStyles.usernamePacifico
                               .copyWith(color: AppColors.text),
                           textAlign: TextAlign.left,

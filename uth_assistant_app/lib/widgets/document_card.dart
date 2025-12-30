@@ -36,28 +36,67 @@ class DocumentCard extends StatelessWidget {
   }
 
   Widget _buildThumbnail() {
-    String imageUrl = document.getPageUrl(1);
-    bool isValidUrl = imageUrl.isNotEmpty && imageUrl.startsWith(RegExp(r'http(s)?://'));
+    // ✅ DocumentModel đã xử lý preview URL (convert PDF → JPG)
+    String imageUrl = document.previewUrl;
 
+    // Kiểm tra URL hợp lệ
+    bool isValidUrl = imageUrl.isNotEmpty &&
+        (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'));
+
+    // Fallback: Nếu không có URL, hiển thị icon PDF
     if (!isValidUrl) {
       return Container(
-        color: Colors.grey[100],
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.grey[100]!, Colors.grey[50]!],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Center(
-          child: Icon(Icons.picture_as_pdf, size: 40, color: Colors.grey[300]),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.picture_as_pdf, size: 40, color: Colors.grey[400]),
+              const SizedBox(height: 4),
+              Text(
+                'PDF',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[500],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
+    // Hiển thị ảnh từ URL
     return CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
       placeholder: (context, url) => Container(
         color: Colors.grey[100],
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        child: const Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.primary,
+          ),
+        ),
       ),
       errorWidget: (context, url, error) => Container(
-        color: Colors.grey[100],
-        child: Icon(Icons.broken_image, color: Colors.grey[300]),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.grey[200]!, Colors.grey[100]!],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: Icon(Icons.broken_image, color: Colors.grey[400], size: 36),
+        ),
       ),
     );
   }
@@ -65,7 +104,7 @@ class DocumentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat("#,###", "vi_VN");
-    
+
     // --- MÀU SẮC & TRẠNG THÁI ---
     Color statusColor;
     String statusText;
@@ -118,7 +157,10 @@ class DocumentCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: const [
-                        BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+                        BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 2))
                       ],
                     ),
                     clipBehavior: Clip.hardEdge,
@@ -130,19 +172,25 @@ class DocumentCard extends StatelessWidget {
                           top: 0,
                           left: 0,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
                             decoration: const BoxDecoration(
                               color: Colors.redAccent,
-                              borderRadius: BorderRadius.only(bottomRight: Radius.circular(8)),
+                              borderRadius: BorderRadius.only(
+                                  bottomRight: Radius.circular(8)),
                             ),
-                            child: const Text('PDF', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                            child: const Text('PDF',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold)),
                           ),
                         )
                       ],
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(width: 14),
 
                 // 2. NỘI DUNG CHÍNH
@@ -159,11 +207,10 @@ class DocumentCard extends StatelessWidget {
                             child: Text(
                               document.title,
                               style: const TextStyle(
-                                fontSize: 15, 
-                                fontWeight: FontWeight.w700,
-                                height: 1.3,
-                                color: Colors.black87
-                              ),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.3,
+                                  color: Colors.black87),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -174,18 +221,21 @@ class DocumentCard extends StatelessWidget {
                               onTap: onOptionTap,
                               borderRadius: BorderRadius.circular(20),
                               child: Padding(
-                                padding: const EdgeInsets.only(left: 8, bottom: 8),
+                                padding:
+                                    const EdgeInsets.only(left: 8, bottom: 8),
                                 child: SvgPicture.asset(
-                                  AppAssets.iconSetting, // Dùng icon setting từ assets
+                                  AppAssets
+                                      .iconSetting, // Dùng icon setting từ assets
                                   width: 20,
                                   height: 20,
-                                  colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                                  colorFilter: const ColorFilter.mode(
+                                      Colors.grey, BlendMode.srcIn),
                                 ),
                               ),
                             ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 8),
 
                       // User info
@@ -193,19 +243,23 @@ class DocumentCard extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 9,
-                            backgroundImage: document.ownerAvatar.isNotEmpty 
-                                ? NetworkImage(document.ownerAvatar) 
+                            backgroundImage: document.ownerAvatar.isNotEmpty
+                                ? NetworkImage(document.ownerAvatar)
                                 : null,
                             backgroundColor: Colors.grey[200],
-                            child: document.ownerAvatar.isEmpty 
-                                ? const Icon(Icons.person, size: 12, color: Colors.grey) 
+                            child: document.ownerAvatar.isEmpty
+                                ? const Icon(Icons.person,
+                                    size: 12, color: Colors.grey)
                                 : null,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               document.ownerName,
-                              style: TextStyle(fontSize: 12, color: Colors.grey[700], fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w500),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -214,22 +268,26 @@ class DocumentCard extends StatelessWidget {
                       ),
 
                       const SizedBox(height: 6),
-                      
+
                       // Metadata Row
                       Row(
                         children: [
-                          Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey[500]),
+                          Icon(Icons.calendar_today_outlined,
+                              size: 12, color: Colors.grey[500]),
                           const SizedBox(width: 4),
                           Text(
-                            _formatDate(document.createdAt), 
-                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                            _formatDate(document.createdAt),
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.grey[600]),
                           ),
                           const SizedBox(width: 12),
-                          Icon(Icons.description_outlined, size: 12, color: Colors.grey[500]),
+                          Icon(Icons.description_outlined,
+                              size: 12, color: Colors.grey[500]),
                           const SizedBox(width: 4),
                           Text(
                             '${document.totalPages} trang',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.grey[600]),
                           ),
                         ],
                       ),
@@ -240,11 +298,13 @@ class DocumentCard extends StatelessWidget {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
                             color: statusBg,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: statusColor.withOpacity(0.2)),
+                            border:
+                                Border.all(color: statusColor.withOpacity(0.2)),
                           ),
                           child: Text(
                             statusText,
