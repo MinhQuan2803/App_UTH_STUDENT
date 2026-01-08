@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import 'api_client.dart';
 import '../config/app_theme.dart';
 
 /// Service xử lý tương tác với bài viết (like, comment)
@@ -9,12 +10,7 @@ import '../config/app_theme.dart';
 class InteractionService {
   // Sử dụng production base URL (không có /posts hay /users, chỉ /api)
   static const String baseUrl = 'https://uthstudent.onrender.com/api';
-  final AuthService _authService = AuthService();
-
-  /// Lấy token hợp lệ (tự động refresh nếu cần)
-  Future<String?> _getToken() async {
-    return await _authService.getValidToken();
-  }
+  final ApiClient _apiClient = ApiClient();
 
   /// Toggle like cho bài viết
   /// API: POST /api/posts/:postId/react (correct endpoint)
@@ -22,32 +18,19 @@ class InteractionService {
   /// Response: { "newReactionType": "like" | null }
   Future<Map<String, dynamic>> toggleLike(String postId) async {
     try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Chưa đăng nhập');
-      }
-
-      final url = Uri.parse('$baseUrl/posts/$postId/react');
-
       if (kDebugMode) {
         print('=== TOGGLE LIKE ===');
-        print('URL: $url');
+        print('URL: $baseUrl/posts/$postId/react');
         print('PostId: $postId');
       }
 
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-          'Cookie': 'token=$token',
-        },
-        body: json.encode({'type': 'like'}),
+      final response = await _apiClient.post(
+        '$baseUrl/posts/$postId/react',
+        body: {'type': 'like'},
       );
 
       if (kDebugMode) {
         print('Response status: ${response.statusCode}');
-        print('Response headers: ${response.headers}');
         print(
             'Response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
       }
@@ -62,9 +45,11 @@ class InteractionService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
 
-        // API trả về: { "newReactionType": "like" | "dislike" | null, "likesCount": 5, "dislikesCount": 2 }
+        // BACKEND CHỈ TRẢ VỀ: { "newReactionType": "like" | "dislike" | null }
+        // KHÔNG có likesCount/dislikesCount trong response
         final newReactionType = data['newReactionType'];
         final isLiked = newReactionType == 'like';
+        final isDisliked = newReactionType == 'dislike';
 
         if (kDebugMode)
           print('✓ Toggle like thành công: newReactionType=$newReactionType');
@@ -72,8 +57,8 @@ class InteractionService {
         return {
           'success': true,
           'isLiked': isLiked,
-          'likesCount': data['likesCount'] ?? 0,
-          'dislikesCount': data['dislikesCount'] ?? 0,
+          'isDisliked': isDisliked,
+          'newReactionType': newReactionType, // null, "like", hoặc "dislike"
         };
       } else {
         // Try to parse error
@@ -98,23 +83,9 @@ class InteractionService {
   /// Response: Array of comments
   Future<List<Comment>> getComments(String postId) async {
     try {
-      final token = await _getToken();
-
-      final url = Uri.parse('$baseUrl/comments/$postId');
-
       if (kDebugMode) print('=== GET COMMENTS: $postId ===');
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-      };
-
-      // Thêm token nếu có (optional cho public posts)
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-        headers['Cookie'] = 'token=$token';
-      }
-
-      final response = await http.get(url, headers: headers);
+      final response = await _apiClient.get('$baseUrl/comments/$postId');
 
       if (kDebugMode) print('Response status: ${response.statusCode}');
 
@@ -143,25 +114,11 @@ class InteractionService {
   /// Response: Comment object
   Future<Comment> addComment(String postId, String content) async {
     try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Chưa đăng nhập');
-      }
-
-      final url = Uri.parse('$baseUrl/comments/$postId');
-
       if (kDebugMode) print('=== ADD COMMENT: $postId ===');
 
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-          'Cookie': 'token=$token',
-        },
-        body: json.encode({
-          'text': content, // API expects 'text' not 'content'
-        }),
+      final response = await _apiClient.post(
+        '$baseUrl/comments/$postId',
+        body: {'text': content},
       );
 
       if (kDebugMode) print('Response status: ${response.statusCode}');
@@ -186,22 +143,9 @@ class InteractionService {
   /// API: DELETE /api/comments/:commentId
   Future<void> deleteComment(String commentId) async {
     try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Chưa đăng nhập');
-      }
-
-      final url = Uri.parse('$baseUrl/comments/$commentId');
-
       if (kDebugMode) print('=== DELETE COMMENT: $commentId ===');
 
-      final response = await http.delete(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Cookie': 'token=$token',
-        },
-      );
+      final response = await _apiClient.delete('$baseUrl/comments/$commentId');
 
       if (kDebugMode) print('Response status: ${response.statusCode}');
 
@@ -221,25 +165,11 @@ class InteractionService {
   /// Body: { "text": "new comment content" }
   Future<Comment> updateComment(String commentId, String newContent) async {
     try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Chưa đăng nhập');
-      }
-
-      final url = Uri.parse('$baseUrl/comments/$commentId');
-
       if (kDebugMode) print('=== UPDATE COMMENT: $commentId ===');
 
-      final response = await http.put(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-          'Cookie': 'token=$token',
-        },
-        body: json.encode({
-          'text': newContent, // API expects 'text'
-        }),
+      final response = await _apiClient.put(
+        '$baseUrl/comments/$commentId',
+        body: {'text': newContent},
       );
 
       if (kDebugMode) print('Response status: ${response.statusCode}');
@@ -263,22 +193,10 @@ class InteractionService {
   /// API: POST /api/likes/comment/:commentId
   Future<Map<String, dynamic>> toggleCommentLike(String commentId) async {
     try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Chưa đăng nhập');
-      }
-
-      final url = Uri.parse('$baseUrl/likes/comment/$commentId');
-
       if (kDebugMode) print('=== TOGGLE COMMENT LIKE: $commentId ===');
 
-      final response = await http.post(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Cookie': 'token=$token',
-        },
-      );
+      final response =
+          await _apiClient.post('$baseUrl/likes/comment/$commentId', body: {});
 
       if (kDebugMode) print('Response status: ${response.statusCode}');
 

@@ -14,7 +14,7 @@ class DocumentScreen extends StatefulWidget {
 }
 
 class _DocumentScreenState extends State<DocumentScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late TabController _tabController;
   final DocumentService _documentService = DocumentService();
   final TextEditingController _searchController = TextEditingController();
@@ -34,11 +34,14 @@ class _DocumentScreenState extends State<DocumentScreen>
   String _searchKeyword = '';
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabSelection);
-    
+
     _searchController.addListener(() {
       setState(() {
         _searchKeyword = _searchController.text.toLowerCase();
@@ -51,9 +54,15 @@ class _DocumentScreenState extends State<DocumentScreen>
   void _handleTabSelection() {
     if (_tabController.indexIsChanging) return;
     switch (_tabController.index) {
-      case 1: if (_purchasedDocs.isEmpty) _loadPurchasedDocs(); break;
-      case 2: if (_uploadedDocs.isEmpty) _loadUploadedDocs(); break;
-      case 3: if (_likedDocs.isEmpty) _loadLikedDocs(); break;
+      case 1:
+        if (_purchasedDocs.isEmpty) _loadPurchasedDocs();
+        break;
+      case 2:
+        if (_uploadedDocs.isEmpty) _loadUploadedDocs();
+        break;
+      case 3:
+        if (_likedDocs.isEmpty) _loadLikedDocs();
+        break;
     }
   }
 
@@ -63,32 +72,61 @@ class _DocumentScreenState extends State<DocumentScreen>
     try {
       final docs = await _documentService.getPublicDocuments();
       if (mounted) setState(() => _publicDocs = docs);
-    } catch (e) { /*...*/ } finally { if (mounted) setState(() => _loadingPublic = false); }
+    } catch (e) {/*...*/} finally {
+      if (mounted) setState(() => _loadingPublic = false);
+    }
   }
+
   Future<void> _loadPurchasedDocs() async {
     setState(() => _loadingPurchased = true);
     try {
       final docs = await _documentService.getPurchasedDocuments();
       if (mounted) setState(() => _purchasedDocs = docs);
-    } catch (e) { /*...*/ } finally { if (mounted) setState(() => _loadingPurchased = false); }
+    } catch (e) {/*...*/} finally {
+      if (mounted) setState(() => _loadingPurchased = false);
+    }
   }
+
   Future<void> _loadUploadedDocs() async {
     setState(() => _loadingUploaded = true);
     try {
       final docs = await _documentService.getMyUploadedDocuments();
       if (mounted) setState(() => _uploadedDocs = docs);
-    } catch (e) { /*...*/ } finally { if (mounted) setState(() => _loadingUploaded = false); }
+    } catch (e) {/*...*/} finally {
+      if (mounted) setState(() => _loadingUploaded = false);
+    }
   }
+
   Future<void> _loadLikedDocs() async {
     setState(() => _loadingLiked = true);
     try {
       final docs = await _documentService.getLikedDocuments();
       if (mounted) setState(() => _likedDocs = docs);
-    } catch (e) { /*...*/ } finally { if (mounted) setState(() => _loadingLiked = false); }
+    } catch (e) {/*...*/} finally {
+      if (mounted) setState(() => _loadingLiked = false);
+    }
+  }
+
+  // --- PUBLIC METHOD: Refresh current tab ---
+  void refreshCurrentTab() {
+    switch (_tabController.index) {
+      case 0:
+        _loadPublicDocs();
+        break;
+      case 1:
+        _loadPurchasedDocs();
+        break;
+      case 2:
+        _loadUploadedDocs();
+        break;
+      case 3:
+        _loadLikedDocs();
+        break;
+    }
   }
 
   // --- ACTIONS (DELETE & EDIT) ---
-  
+
   // Hiển thị Menu Sửa/Xóa
   void _showDocumentOptions(DocumentModel doc) {
     showModalBottomSheet(
@@ -104,27 +142,34 @@ class _DocumentScreenState extends State<DocumentScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2)),
               ),
-              Text('Quản lý tài liệu', style: AppTextStyles.bodyBold.copyWith(fontSize: 16)),
+              Text('Quản lý tài liệu',
+                  style: AppTextStyles.bodyBold.copyWith(fontSize: 16)),
               const SizedBox(height: 10),
-              
+
               // Nút Chỉnh sửa
               ListTile(
-                leading: const Icon(Icons.edit_outlined, color: AppColors.primary),
+                leading:
+                    const Icon(Icons.edit_outlined, color: AppColors.primary),
                 title: const Text('Chỉnh sửa thông tin'),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showEditDialog(doc);
                 },
               ),
-              
+
               // Nút Xóa
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: AppColors.danger),
-                title: const Text('Xóa tài liệu', style: TextStyle(color: AppColors.danger)),
+                leading:
+                    const Icon(Icons.delete_outline, color: AppColors.danger),
+                title: const Text('Xóa tài liệu',
+                    style: TextStyle(color: AppColors.danger)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _confirmDelete(doc);
@@ -144,9 +189,11 @@ class _DocumentScreenState extends State<DocumentScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Xác nhận xóa'),
-        content: Text('Bạn có chắc chắn muốn xóa tài liệu "${doc.title}" không? Hành động này không thể hoàn tác.'),
+        content: Text(
+            'Bạn có chắc chắn muốn xóa tài liệu "${doc.title}" không? Hành động này không thể hoàn tác.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () async {
@@ -159,18 +206,23 @@ class _DocumentScreenState extends State<DocumentScreen>
                   _uploadedDocs.removeWhere((d) => d.id == doc.id);
                 });
                 if (mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('Đã xóa tài liệu thành công'), backgroundColor: Colors.green),
-                   );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Đã xóa tài liệu thành công'),
+                        backgroundColor: Colors.green),
+                  );
                 }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                     SnackBar(content: Text('Lỗi: ${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.red),
-                   );
+                    SnackBar(
+                        content: Text(
+                            'Lỗi: ${e.toString().replaceAll('Exception: ', '')}'),
+                        backgroundColor: Colors.red),
+                  );
                 }
               }
-            }, 
+            },
             child: const Text('Xóa', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -181,9 +233,9 @@ class _DocumentScreenState extends State<DocumentScreen>
   // Dialog Sửa (Tiêu đề, Giá & Privacy)
   void _showEditDialog(DocumentModel doc) {
     final titleCtrl = TextEditingController(text: doc.title);
-    final priceCtrl = TextEditingController(text: doc.price.toString()); 
+    final priceCtrl = TextEditingController(text: doc.price.toString());
     // Mặc định chọn theo doc hiện tại nếu có field privacy, nếu không thì default 'public'
-    String selectedPrivacy = 'public'; 
+    String selectedPrivacy = 'public';
 
     showDialog(
       context: context,
@@ -198,57 +250,72 @@ class _DocumentScreenState extends State<DocumentScreen>
                   children: [
                     TextField(
                       controller: titleCtrl,
-                      decoration: const InputDecoration(labelText: 'Tiêu đề tài liệu'),
+                      decoration:
+                          const InputDecoration(labelText: 'Tiêu đề tài liệu'),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: priceCtrl,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Giá bán (Điểm)',
-                        hintText: 'Nhập 0 để miễn phí'
-                      ),
+                          labelText: 'Giá bán (Điểm)',
+                          hintText: 'Nhập 0 để miễn phí'),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       value: selectedPrivacy,
-                      decoration: const InputDecoration(labelText: 'Quyền riêng tư'),
+                      decoration:
+                          const InputDecoration(labelText: 'Quyền riêng tư'),
                       items: const [
-                        DropdownMenuItem(value: 'public', child: Text('Công khai')),
-                        DropdownMenuItem(value: 'private', child: Text('Riêng tư')),
+                        DropdownMenuItem(
+                            value: 'public', child: Text('Công khai')),
+                        DropdownMenuItem(
+                            value: 'private', child: Text('Riêng tư')),
                       ],
-                      onChanged: (val) => setState(() => selectedPrivacy = val!),
+                      onChanged: (val) =>
+                          setState(() => selectedPrivacy = val!),
                     ),
                   ],
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Huỷ')),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary),
                   onPressed: () async {
                     Navigator.pop(ctx);
                     try {
                       // FIX: Làm sạch chuỗi giá tiền (bỏ dấu chấm, phẩy) trước khi parse
-                      String cleanPrice = priceCtrl.text.replaceAll('.', '').replaceAll(',', '');
+                      String cleanPrice = priceCtrl.text
+                          .replaceAll('.', '')
+                          .replaceAll(',', '');
                       int newPrice = int.tryParse(cleanPrice) ?? doc.price;
 
-                      await _documentService.updateDocument(doc.id, titleCtrl.text, selectedPrivacy, newPrice);
+                      await _documentService.updateDocument(
+                          doc.id, titleCtrl.text, selectedPrivacy, newPrice);
                       _loadUploadedDocs(); // Reload lại list
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Cập nhật thành công'), backgroundColor: Colors.green),
+                          const SnackBar(
+                              content: Text('Cập nhật thành công'),
+                              backgroundColor: Colors.green),
                         );
                       }
                     } catch (e) {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Lỗi: ${e.toString()}'), backgroundColor: Colors.red),
+                          SnackBar(
+                              content: Text('Lỗi: ${e.toString()}'),
+                              backgroundColor: Colors.red),
                         );
                       }
                     }
-                  }, 
-                  child: const Text('Lưu', style: TextStyle(color: Colors.white)),
+                  },
+                  child:
+                      const Text('Lưu', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -260,13 +327,16 @@ class _DocumentScreenState extends State<DocumentScreen>
 
   List<DocumentModel> _filterDocs(List<DocumentModel> docs) {
     if (_searchKeyword.isEmpty) return docs;
-    return docs.where((doc) => doc.title.toLowerCase().contains(_searchKeyword)).toList();
+    return docs
+        .where((doc) => doc.title.toLowerCase().contains(_searchKeyword))
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Phải gọi để AutomaticKeepAliveClientMixin hoạt động
     return Scaffold(
-      backgroundColor: Colors.white, 
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -280,11 +350,12 @@ class _DocumentScreenState extends State<DocumentScreen>
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Tìm tài liệu...',
-              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 15),
               prefixIcon: Icon(Icons.search, color: Colors.grey[500], size: 20),
               suffixIcon: _searchKeyword.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18, color: Colors.grey),
+                      icon:
+                          const Icon(Icons.clear, size: 18, color: Colors.grey),
                       onPressed: () {
                         _searchController.clear();
                         FocusScope.of(context).unfocus();
@@ -313,44 +384,49 @@ class _DocumentScreenState extends State<DocumentScreen>
           ],
         ),
       ),
-      
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildDocList(_publicDocs, _loadingPublic, _loadPublicDocs, 'Không tìm thấy tài liệu', isEditable: false),
-          _buildDocList(_purchasedDocs, _loadingPurchased, _loadPurchasedDocs, 'Tủ sách trống', isEditable: false),
-          _buildDocList(_uploadedDocs, _loadingUploaded, _loadUploadedDocs, 'Chưa đăng tài liệu nào', isEditable: true),
-          _buildDocList(_likedDocs, _loadingLiked, _loadLikedDocs, 'Chưa có yêu thích', isEditable: false),
+          _buildDocList(_publicDocs, _loadingPublic, _loadPublicDocs,
+              'Không tìm thấy tài liệu',
+              isEditable: false),
+          _buildDocList(_purchasedDocs, _loadingPurchased, _loadPurchasedDocs,
+              'Tủ sách trống',
+              isEditable: false),
+          _buildDocList(_uploadedDocs, _loadingUploaded, _loadUploadedDocs,
+              'Chưa đăng tài liệu nào',
+              isEditable: true),
+          _buildDocList(
+              _likedDocs, _loadingLiked, _loadLikedDocs, 'Chưa có yêu thích',
+              isEditable: false),
         ],
       ),
     );
   }
 
-  Widget _buildDocList(
-    List<DocumentModel> originalDocs, 
-    bool isLoading, 
-    Future<void> Function() onRefresh, 
-    String emptyMsg,
-    {required bool isEditable} 
-  ) {
+  Widget _buildDocList(List<DocumentModel> originalDocs, bool isLoading,
+      Future<void> Function() onRefresh, String emptyMsg,
+      {required bool isEditable}) {
     if (isLoading) return const Center(child: CircularProgressIndicator());
 
     final filteredDocs = _filterDocs(originalDocs);
 
     if (filteredDocs.isEmpty) {
-      String msg = originalDocs.isEmpty ? emptyMsg : 'Không có kết quả "$_searchKeyword"';
+      String msg = originalDocs.isEmpty
+          ? emptyMsg
+          : 'Không có kết quả "$_searchKeyword"';
       return Center(
         child: SingleChildScrollView(
-           physics: const AlwaysScrollableScrollPhysics(),
-           child: Column(
-             mainAxisAlignment: MainAxisAlignment.center,
-             children: [
-               Icon(Icons.folder_open, size: 60, color: Colors.grey[300]),
-               const SizedBox(height: 16),
-               Text(msg, style: TextStyle(color: Colors.grey[500])),
-               TextButton(onPressed: onRefresh, child: const Text('Tải lại'))
-             ],
-           ),
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.folder_open, size: 60, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text(msg, style: TextStyle(color: Colors.grey[500])),
+              TextButton(onPressed: onRefresh, child: const Text('Tải lại'))
+            ],
+          ),
         ),
       );
     }
@@ -358,7 +434,8 @@ class _DocumentScreenState extends State<DocumentScreen>
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.builder(
-        padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 100), 
+        padding:
+            const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 100),
         itemCount: filteredDocs.length,
         itemBuilder: (context, index) {
           final doc = filteredDocs[index];

@@ -143,6 +143,61 @@ class DocumentService {
     };
   }
 
+  /// Preview summary - Tạo tóm tắt tự động từ file PDF
+  Future<Map<String, dynamic>> previewSummary(File file) async {
+    final uri = Uri.parse('$_baseUrl/preview-summary');
+    final token = await _authService.getValidToken();
+
+    // Tạo MultipartRequest
+    var request = http.MultipartRequest('POST', uri);
+
+    // Thêm Headers
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    // Thêm File
+    request.files.add(await _createMultipartFile(file));
+
+    try {
+      if (kDebugMode) print('🤖 Đang tạo tóm tắt tự động...');
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (kDebugMode) {
+          print('✓ Response received from preview-summary');
+          print('📦 Full response data: $data');
+          print('📝 Summary: ${data['summary']}');
+          print('🏷️ Category: ${data['category']}');
+          print('📊 Data type: ${data.runtimeType}');
+          print('🔑 Keys: ${data.keys}');
+        }
+
+        // Validation: Kiểm tra xem có summary không
+        if (data['summary'] == null ||
+            data['summary'].toString().trim().isEmpty) {
+          if (kDebugMode) print('⚠️ Summary is empty or null');
+          throw Exception('Backend không trả về tóm tắt. Vui lòng thử lại.');
+        }
+
+        return data;
+      } else {
+        if (kDebugMode) {
+          print('❌ Lỗi tạo tóm tắt - Status: ${response.statusCode}');
+          print('❌ Response body: ${response.body}');
+        }
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Lỗi tạo tóm tắt');
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error preview summary: $e');
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
   // 1. Tab Khám phá (Public Feed)
   Future<List<DocumentModel>> getPublicDocuments({int page = 1}) async {
     final uri = Uri.parse(_baseUrl).replace(queryParameters: {

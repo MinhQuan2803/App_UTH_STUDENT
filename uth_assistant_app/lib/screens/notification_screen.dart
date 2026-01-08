@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 import '../widgets/modern_app_bar.dart';
@@ -5,6 +6,7 @@ import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import '../services/post_service.dart'; // Import PostService để fetch post
 import '../widgets/notification_item.dart';
+import 'transaction_history_screen.dart'; // Import màn hình lịch sử giao dịch
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -13,7 +15,8 @@ class NotificationScreen extends StatefulWidget {
   State<NotificationScreen> createState() => _NotificationScreenState();
 }
 
-class _NotificationScreenState extends State<NotificationScreen> {
+class _NotificationScreenState extends State<NotificationScreen>
+    with WidgetsBindingObserver {
   final NotificationService _notificationService = NotificationService();
   final PostService _postService = PostService();
   final ScrollController _scrollController = ScrollController();
@@ -34,6 +37,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadNotifications(refresh: true);
 
     // Listener cho Infinite Scroll
@@ -49,12 +53,30 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     super.dispose();
   }
 
+  // Detect khi app quay lại foreground
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && mounted) {
+      // Reload notifications khi quay lại app
+      _loadNotifications(refresh: true);
+    }
+  }
+
   // Load danh sách (Lần đầu hoặc Pull to Refresh)
   Future<void> _loadNotifications({bool refresh = false}) async {
+    if (kDebugMode) {
+      print('🔄 === LOADING NOTIFICATIONS ===');
+      print('   Refresh: $refresh');
+      print('   Current page: $_currentPage');
+      print('   Filter: $_selectedFilter');
+    }
+
     if (refresh) {
       setState(() {
         _isLoading = true;
@@ -71,6 +93,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
         isRead: _selectedFilter == 'all' ? null : (_selectedFilter == 'read'),
       );
 
+      if (kDebugMode) {
+        print('   ✅ Loaded ${result['notifications'].length} notifications');
+        print('   Total pages: ${result['totalPages']}');
+        if (result['notifications'].isNotEmpty) {
+          final firstNotif = result['notifications'][0];
+          print('   First notification:');
+          print('      - ID: ${firstNotif.id}');
+          print('      - isRead: ${firstNotif.isRead}');
+          print('      - Message: ${firstNotif.message}');
+        }
+      }
+
       if (mounted) {
         setState(() {
           _notifications = result['notifications'];
@@ -79,6 +113,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         });
       }
     } catch (e) {
+      if (kDebugMode) print('   ❌ Error loading notifications: $e');
+
       if (mounted) {
         setState(() {
           _error = e.toString().replaceFirst('Exception: ', '');
@@ -237,22 +273,76 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   // --- LOGIC NAVIGATION ĐÃ TỐI ƯU ---
   void _onNotificationTap(NotificationModel notification) async {
+    if (kDebugMode) {
+      print('🔔 === NOTIFICATION TAPPED ===');
+      print('   ID: ${notification.id}');
+      print('   Type: ${notification.type}');
+      print('   isRead: ${notification.isRead}');
+      print('   Message: ${notification.message}');
+    }
+
     // 1. UI Update ngay lập tức (Optimistic UI)
-    if (!notification.isRead) {
+    final wasUnread = !notification.isRead;
+    if (wasUnread) {
       setState(() {
         notification.isRead = true;
       });
-      // Gọi API ngầm
-      _notificationService.markAsRead(notification.id);
+
+      if (kDebugMode) print('   ✓ UI updated (optimistic)');
+
+      // Gọi API ngầm để đánh dấu đã đọc
+      try {
+        if (kDebugMode) print('   📤 Calling markAsRead API...');
+        await _notificationService.markAsRead(notification.id);
+        if (kDebugMode) print('   ✅ markAsRead API success');
+      } catch (e) {
+        if (kDebugMode) {
+          print('   ❌ markAsRead API failed: $e');
+          print('   ⚠️ Reverting UI state');
+        }
+        // Nếu API fail, revert lại UI
+        if (mounted) {
+          setState(() {
+            notification.isRead = false;
+          });
+        }
+      }
+    } else {
+      if (kDebugMode) print('   ℹ️ Already read, skipping markAsRead');
     }
 
     final data = notification.data;
-    if (data == null) return;
+    if (data == null) {
+      if (kDebugMode) print('   ⚠️ No data, cannot navigate');
+      return;
+    }
 
-    // 2. Điều hướng dựa trên 'screen' key từ backend
-    // Backend gửi: { screen: 'post_detail', postId: '...' }
-    // Hoặc: { screen: 'profile', username: '...' }
+    // 2. Kiểm tra notification type trước
+    final String type = notification.type ?? '';
 
+    // 💰 XỬ LÝ THÔNG BÁO BIẾN ĐỘNG SỐ DƯ - Chuyển đến lịch sử giao dịch
+    if (type == 'wallet' || type == 'balance') {
+      try {
+        if (kDebugMode) print('   💰 Navigating to transaction history...');
+
+        if (!mounted) return;
+
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const TransactionHistoryScreen(),
+          ),
+        );
+
+        if (kDebugMode) print('   ✓ Navigated to transaction history screen');
+      } catch (e) {
+        if (kDebugMode)
+          print('   ❌ Navigation error to transaction history: $e');
+      }
+      return; // Dừng xử lý, không cần check screen
+    }
+
+    // 3. Điều hướng dựa trên 'screen' key từ backend (cho các loại khác)
     final String screen = data['screen']?.toString() ?? '';
 
     try {
@@ -260,23 +350,23 @@ class _NotificationScreenState extends State<NotificationScreen> {
         final postId = data['postId']?.toString();
         if (postId == null) return;
 
+        if (kDebugMode) print('   📝 Navigating to post detail...');
         _navigateToPost(postId);
       } else if (screen == 'profile') {
         final username = data['username']?.toString();
-        // Fallback cho logic cũ nếu không có username
         final userId = data['userId']?.toString();
 
         if (username != null) {
+          if (kDebugMode) print('   👤 Navigating to profile: $username');
           Navigator.pushNamed(context, '/profile',
               arguments: {'username': username});
         } else if (userId != null) {
-          // Nếu app hỗ trợ tìm user theo ID thì dùng, không thì thôi
-          // Navigator.pushNamed(context, '/profile_by_id', arguments: {'userId': userId});
-          print('Navigating by ID not fully implemented yet');
+          if (kDebugMode)
+            print('   ⚠️ Navigating by ID not fully implemented yet');
         }
       }
     } catch (e) {
-      print('Navigation error: $e');
+      if (kDebugMode) print('   ❌ Navigation error: $e');
     }
   }
 

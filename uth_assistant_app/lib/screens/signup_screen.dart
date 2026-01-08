@@ -217,7 +217,7 @@ class _SignupScreenState extends State<SignupScreen>
                 ),
                 const SizedBox(height: 24.0),
                 CustomTextField(
-                  hintText: 'Tên hiển thị (3-30 ký tự)',
+                  hintText: 'Tên người dùng',
                   controller: _usernameController,
                   focusNode: _usernameFocus,
                   keyboardType: TextInputType.text,

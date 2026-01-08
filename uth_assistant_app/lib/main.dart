@@ -29,6 +29,10 @@ import 'screens/document_detail_screen.dart';
 import 'screens/document_reader_screen.dart';
 import 'models/document_model.dart';
 
+// Imports cho Follow và Reaction
+import 'screens/follow_list_screen.dart';
+import 'screens/reaction_list_screen.dart';
+
 // Debug screens (chỉ trong debug mode)
 import 'screens/token_debug_screen.dart';
 
@@ -192,6 +196,44 @@ class MyApp extends StatelessWidget {
           if (document != null) {
             return MaterialPageRoute(
               builder: (context) => DocumentReaderScreen(document: document),
+            );
+          }
+          return null;
+        }
+
+        // Route: Danh sách người theo dõi/đang theo dõi
+        if (settings.name == '/follow_list') {
+          final arguments = settings.arguments as Map<String, dynamic>?;
+          final username = arguments?['username'] as String?;
+          final initialIndex = arguments?['initialIndex'] as int? ?? 0;
+
+          if (username != null) {
+            return MaterialPageRoute(
+              builder: (context) => FollowListScreen(
+                username: username,
+                initialIndex: initialIndex,
+              ),
+            );
+          }
+          return null;
+        }
+
+        // Route: Danh sách người đã react bài viết
+        if (settings.name == '/reactions') {
+          final arguments = settings.arguments as Map<String, dynamic>?;
+          final postId = arguments?['postId'] as String?;
+          final initialLikesCount =
+              arguments?['initialLikesCount'] as int? ?? 0;
+          final initialDislikesCount =
+              arguments?['initialDislikesCount'] as int? ?? 0;
+
+          if (postId != null) {
+            return MaterialPageRoute(
+              builder: (context) => ReactionListScreen(
+                postId: postId,
+                initialLikesCount: initialLikesCount,
+                initialDislikesCount: initialDislikesCount,
+              ),
             );
           }
           return null;

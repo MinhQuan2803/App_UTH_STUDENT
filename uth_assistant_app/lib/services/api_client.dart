@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'auth_service.dart';
 
 class ApiClient {
@@ -74,6 +75,30 @@ class ApiClient {
     });
   }
 
+  // --- PATCH ---
+  Future<http.Response> patch(
+    String url, {
+    Map<String, String>? headers,
+    dynamic body,
+    Duration timeout = const Duration(seconds: 90),
+  }) async {
+    return _makeRequestWithRetry(() async {
+      final token = await _authService.getValidToken();
+      final requestHeaders = {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+        ...?headers,
+      };
+      return await http
+          .patch(
+            Uri.parse(url),
+            headers: requestHeaders,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(timeout);
+    });
+  }
+
   // --- DELETE ---
   Future<http.Response> delete(
     String url, {
@@ -113,18 +138,51 @@ class ApiClient {
       // Gọi hàm refresh mới
       final result = await _authService.refreshAccessToken();
 
-      // Nếu thành công HOẶC lỗi mạng (server ngủ) -> Thử retry
-      if (result == RefreshResult.success ||
-          result == RefreshResult.networkError) {
-        if (kDebugMode)
-          print('✅ Token refreshed (or network wait), retrying request...');
-
-        // Retry request với token (mới hoặc cũ)
+      if (result == RefreshResult.success) {
+        // Refresh thành công → Retry với token mới
+        if (kDebugMode) print('✅ Token refreshed, retrying request...');
         try {
           response = await request();
         } catch (e) {
-          // Retry vẫn lỗi (do server chưa dậy hẳn) -> Ném lỗi ra, NHƯNG KHÔNG LOGOUT
           rethrow;
+        }
+      } else if (result == RefreshResult.networkError) {
+        // Lỗi mạng → Kiểm tra token cũ còn dùng được không
+        if (kDebugMode)
+          print('⚠️ Network error during refresh, checking old token...');
+
+        final token = await _authService.getToken();
+        if (token != null) {
+          try {
+            // Import JwtDecoder ở đầu file nếu chưa có
+            final isExpired = JwtDecoder.isExpired(token);
+
+            if (!isExpired) {
+              // Token cũ OK → Retry với token cũ
+              if (kDebugMode) print('✅ Old token still valid, retrying...');
+              try {
+                response = await request();
+              } catch (e) {
+                // Lỗi mạng thật sự, giữ người dùng đăng nhập
+                rethrow;
+              }
+            } else {
+              // Token hết hạn + không refresh được → Logout
+              if (kDebugMode) print('❌ Token expired + network error → Logout');
+              await _authService.signOut();
+              throw Exception(
+                  '401: Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+            }
+          } catch (e) {
+            // Lỗi parse token → Logout
+            if (kDebugMode) print('❌ Cannot decode token → Logout');
+            await _authService.signOut();
+            throw Exception('401: Token không hợp lệ. Vui lòng đăng nhập lại.');
+          }
+        } else {
+          // Không có token → Logout
+          await _authService.signOut();
+          throw Exception('401: Phiên đăng nhập hết hạn.');
         }
       } else {
         // RefreshResult.failed -> Token hỏng thật -> Logout

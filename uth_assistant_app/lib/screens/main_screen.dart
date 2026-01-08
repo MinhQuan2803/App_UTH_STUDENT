@@ -21,12 +21,13 @@ class _MainScreenState extends State<MainScreen> {
   int _fabKeyCounter = 0;
   final GlobalKey<State<HomeScreen>> _homeScreenKey = GlobalKey();
   final GlobalKey<State<ProfileScreen>> _profileScreenKey = GlobalKey();
+  final GlobalKey<State<DocumentScreen>> _documentScreenKey = GlobalKey();
 
   late final List<Widget> _screens = [
     HomeScreen(key: _homeScreenKey, pageController: _pageController),
     const ChatbotScreen(),
-    // DocumentScreen không cần lo về FAB nữa
-    const DocumentScreen(),
+    // DocumentScreen với key để có thể gọi refresh
+    DocumentScreen(key: _documentScreenKey),
     ProfileScreen(key: _profileScreenKey),
   ];
 
@@ -94,8 +95,14 @@ class _MainScreenState extends State<MainScreen> {
     Navigator.push(context,
             MaterialPageRoute(builder: (_) => const UploadDocumentScreen()))
         .then((result) {
-      // Có thể cần dùng EventBus hoặc GlobalKey để báo cho DocumentScreen reload
-      // Nhưng đơn giản nhất là DocumentScreen tự reload khi chuyển tab hoặc pull-to-refresh
+      // Nếu upload thành công (result == true), refresh DocumentScreen
+      if (result == true) {
+        final documentScreenState = _documentScreenKey.currentState;
+        if (documentScreenState != null) {
+          // Gọi method refresh của DocumentScreen
+          (documentScreenState as dynamic).refreshCurrentTab();
+        }
+      }
     });
   }
 

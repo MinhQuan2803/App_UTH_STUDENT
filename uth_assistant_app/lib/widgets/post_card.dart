@@ -82,8 +82,17 @@ class _PostCardState extends State<PostCard> {
     });
 
     try {
-      final actionType = _isLiked ? 'like' : 'unlike';
-      await _postService.likePost(widget.postId, type: actionType);
+      // Backend tự động toggle dựa vào trạng thái hiện tại
+      // Chỉ cần gửi type='like', backend sẽ xử lý logic toggle
+      final newReactionType =
+          await _postService.likePost(widget.postId, type: 'like');
+
+      // Cập nhật state dựa vào response từ backend
+      if (mounted) {
+        setState(() {
+          _isLiked = newReactionType == 'like';
+        });
+      }
     } catch (e) {
       if (kDebugMode) print("Lỗi khi like: $e");
       if (mounted) {
@@ -118,13 +127,14 @@ class _PostCardState extends State<PostCard> {
                 Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                      content: Text(
-                          'Đã gửi báo cáo (chức năng đang phát triển).')),
+                      content:
+                          Text('Đã gửi báo cáo (chức năng đang phát triển).')),
                 );
               },
             ),
             ListTile(
-              leading: const Icon(Icons.cancel_outlined, color: AppColors.subtitle),
+              leading:
+                  const Icon(Icons.cancel_outlined, color: AppColors.subtitle),
               title: const Text('Hủy'),
               onTap: () => Navigator.of(ctx).pop(),
             ),
@@ -139,8 +149,7 @@ class _PostCardState extends State<PostCard> {
       return widget.backgroundColor!;
     }
     final hash = widget.name.hashCode.abs();
-    return AppColors
-        .postBackgrounds[hash % AppColors.postBackgrounds.length];
+    return AppColors.postBackgrounds[hash % AppColors.postBackgrounds.length];
   }
 
   Widget _buildMediaPreview() {

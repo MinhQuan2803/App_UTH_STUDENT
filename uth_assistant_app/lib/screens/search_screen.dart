@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import '../config/app_theme.dart';
 // Import các widget card cần tái sử dụng
 import '../widgets/home_post_card.dart';
 import '../widgets/user_list_item.dart';
 import '../widgets/document_search_item.dart';
+import '../widgets/shimmer_loading.dart';
 
 // Import Service
 import '../services/search_service.dart';
@@ -41,6 +43,15 @@ class _SearchScreenState extends State<SearchScreen>
   final SearchService _searchService = SearchService();
   final AuthService _authService = AuthService();
   String? _username;
+  Timer? _debounceTimer;
+
+  // Suggestions
+  final List<String> _recentSearches = [
+    'Lịch thi',
+    'Thông báo học phí',
+    'Đề cương môn học',
+    'Lịch học kỳ 1',
+  ];
 
   @override
   void initState() {
@@ -53,6 +64,9 @@ class _SearchScreenState extends State<SearchScreen>
 
   // Debounce search để tránh gọi API quá nhiều
   void _onSearchChanged() {
+    // Cancel timer cũ nếu có
+    _debounceTimer?.cancel();
+
     // Nếu query rỗng, clear results
     if (_searchController.text.trim().isEmpty) {
       setState(() {
@@ -66,8 +80,11 @@ class _SearchScreenState extends State<SearchScreen>
       });
       return;
     }
-    // Nếu có query, gọi API
-    _performGlobalSearch();
+
+    // Tạo timer mới với delay 500ms
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _performGlobalSearch();
+    });
   }
 
   // Gọi Global Search API
@@ -125,120 +142,206 @@ class _SearchScreenState extends State<SearchScreen>
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
-  Widget _buildTab(String label, int count) {
-    final bool isSelected = _tabController.index ==
-        ['Người dùng', 'Bài viết', 'Tài liệu'].indexOf(label);
-    final Color textColor =
-        isSelected ? AppColors.white : AppColors.white.withOpacity(0.7);
-
-    return Tab(
-      child: Stack(
-        clipBehavior: Clip.none, // Cho phép hiển thị số bên ngoài Stack
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
         children: [
-          // Tiêu đề chính của tab
-          Padding(
-            padding:
-                const EdgeInsets.only(right: 12), // Tạo khoảng trống cho số
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
+          // Custom Search Bar - Background phủ lên cả status bar
+          _buildModernSearchBar(),
+          // Tab Bar
+          _buildTabBar(),
+          // Tab Content
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildUserList(),
+                _buildPostList(),
+                _buildDocumentList(),
+              ],
             ),
           ),
-          // Số lượng kết quả (superscript)
-          if (count > 0) // Chỉ hiển thị nếu có kết quả
-            Positioned(
-              top: -4, // Nâng số lên trên
-              right: 0, // Đặt số ở góc phải
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 10, // Kích thước chữ nhỏ
-                  color: textColor, // Màu giống tiêu đề
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.white),
-        titleSpacing: 0, // Xóa khoảng cách mặc định của title
-        title: Row(
-          children: [
-            // Icon tìm kiếm đặt bên ngoài TextField
-            Padding(
-              padding: const EdgeInsets.only(
-                  left: 0, right: 8.0), // Giảm padding trái
-              child: SvgPicture.asset(
-                AppAssets.iconSearch,
-                colorFilter: ColorFilter.mode(
-                    AppColors.white.withOpacity(0.7), BlendMode.srcIn),
-                width: 20, // Kích thước icon
-              ),
+  // Modern Search Bar với gradient background - phủ lên cả status bar
+  Widget _buildModernSearchBar() {
+    // Lấy chiều cao status bar
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      // Padding compact như Facebook
+      padding: EdgeInsets.fromLTRB(8, statusBarHeight + 8, 8, 8),
+      child: Row(
+        children: [
+          // Back Button - compact
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              shape: BoxShape.circle,
             ),
-            // TextField mở rộng để chiếm không gian còn lại
-            Expanded(
+            child: IconButton(
+              icon:
+                  const Icon(Icons.arrow_back, color: AppColors.text, size: 20),
+              onPressed: () => Navigator.pop(context),
+              padding: EdgeInsets.zero,
+              iconSize: 20,
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Search TextField - chiếm nhiều space
+          Expanded(
+            child: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(18),
+              ),
               child: TextField(
                 controller: _searchController,
                 autofocus: true,
+                style: AppTextStyles.bodyRegular.copyWith(
+                  fontSize: 15,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Tìm kiếm...',
-                  hintStyle: AppTextStyles.searchHint
-                      .copyWith(color: AppColors.white.withOpacity(0.7)),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                      vertical: 14), // Thêm padding dọc
-                  isCollapsed:
-                      true, // Thêm dòng này để loại bỏ padding mặc định
+                  hintStyle: AppTextStyles.searchHint.copyWith(
+                    fontSize: 15,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: AppColors.subtitle,
+                    size: 20,
+                  ),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear,
-                              color: AppColors.white, size: 20),
-                          onPressed: () => _searchController.clear(),
+                          icon: Icon(
+                            Icons.cancel,
+                            color: AppColors.subtitle,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                          padding: EdgeInsets.zero,
                         )
                       : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 12,
+                  ),
+                  isDense: true,
                 ),
-                style: AppTextStyles.bodyBold.copyWith(color: AppColors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tab Bar với hiệu ứng hiện đại
+  Widget _buildTabBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicatorColor: AppColors.primary,
+        indicatorWeight: 3,
+        labelColor: AppColors.primary,
+        unselectedLabelColor: AppColors.subtitle,
+        labelStyle: AppTextStyles.tabLabel.copyWith(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: AppTextStyles.tabLabel.copyWith(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+        onTap: (_) => setState(() {}),
+        isScrollable: false,
+        tabs: [
+          _buildModernTab('Người dùng', _userCount, Icons.people_rounded),
+          _buildModernTab('Bài viết', _postCount, Icons.article_rounded),
+          _buildModernTab(
+              'Tài liệu', _documentCount, Icons.description_rounded),
+        ],
+      ),
+    );
+  }
+
+  // Modern Tab với icon - compact layout
+  Widget _buildModernTab(String label, int count, IconData icon) {
+    return Tab(
+      height: 50,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 15),
+          const SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+          if (count > 0) ...[
+            const SizedBox(width: 3),
+            Container(
+              constraints: const BoxConstraints(minWidth: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  fontSize: 9,
+                  color: AppColors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
           ],
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.white,
-          labelColor: AppColors.white,
-          unselectedLabelColor: AppColors.white.withOpacity(0.7),
-          labelStyle: AppTextStyles.tabLabel.copyWith(fontSize: 14),
-          indicatorWeight: 3.0,
-          onTap: (_) => setState(() {}),
-          tabs: [
-            _buildTab('Người dùng', _userCount),
-            _buildTab('Bài viết', _postCount),
-            _buildTab('Tài liệu', _documentCount),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildUserList(),
-          _buildPostList(),
-          _buildDocumentList(),
         ],
       ),
     );
@@ -247,30 +350,33 @@ class _SearchScreenState extends State<SearchScreen>
   // Tab 1: Danh sách người dùng
   Widget _buildUserList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildShimmerLoading();
     }
     if (_error.isNotEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(_error,
-              textAlign: TextAlign.center, style: AppTextStyles.errorText),
-        ),
-      );
+      return _buildErrorState(_error);
     }
-    if (_userResults.isEmpty) {
-      return Center(
-        child: Text(
-          _searchController.text.isEmpty
-              ? 'Nhập từ khóa để tìm kiếm người dùng...'
-              : 'Không tìm thấy người dùng nào.',
-          style: AppTextStyles.bodyRegular,
-        ),
+
+    // Empty state với suggestions
+    if (_searchController.text.isEmpty) {
+      return _buildEmptySearchState(
+        icon: Icons.people_rounded,
+        title: 'Tìm kiếm người dùng',
+        subtitle: 'Nhập tên hoặc username để tìm kiếm',
       );
     }
 
-    return ListView.builder(
+    if (_userResults.isEmpty) {
+      return _buildNoResultState('Không tìm thấy người dùng nào');
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _userResults.length,
+      separatorBuilder: (_, __) => const Divider(
+        height: 1,
+        indent: 72,
+        color: AppColors.divider,
+      ),
       itemBuilder: (context, index) {
         final user = _userResults[index];
         return UserListItem(
@@ -291,30 +397,29 @@ class _SearchScreenState extends State<SearchScreen>
   // Tab 2: Danh sách bài viết
   Widget _buildPostList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildShimmerLoading();
     }
     if (_error.isNotEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(_error,
-              textAlign: TextAlign.center, style: AppTextStyles.errorText),
-        ),
-      );
+      return _buildErrorState(_error);
     }
-    if (_postResults.isEmpty) {
-      return Center(
-        child: Text(
-          _searchController.text.isEmpty
-              ? 'Nhập từ khóa để tìm kiếm bài viết...'
-              : 'Không tìm thấy bài viết nào.',
-          style: AppTextStyles.bodyRegular,
-        ),
+
+    // Empty state
+    if (_searchController.text.isEmpty) {
+      return _buildEmptySearchState(
+        icon: Icons.article_rounded,
+        title: 'Tìm kiếm bài viết',
+        subtitle: 'Tìm bài viết theo nội dung hoặc hashtag',
       );
     }
 
-    return ListView.builder(
+    if (_postResults.isEmpty) {
+      return _buildNoResultState('Không tìm thấy bài viết nào');
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _postResults.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final post = _postResults[index];
         return HomePostCard(
@@ -330,40 +435,43 @@ class _SearchScreenState extends State<SearchScreen>
   // Tab 3: Danh sách tài liệu
   Widget _buildDocumentList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildShimmerLoading();
     }
     if (_error.isNotEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(_error,
-              textAlign: TextAlign.center, style: AppTextStyles.errorText),
-        ),
-      );
+      return _buildErrorState(_error);
     }
-    if (_documentResults.isEmpty) {
-      return Center(
-        child: Text(
-          _searchController.text.isEmpty
-              ? 'Nhập từ khóa để tìm kiếm tài liệu...'
-              : 'Không tìm thấy tài liệu nào.',
-          style: AppTextStyles.bodyRegular,
-        ),
+
+    // Empty state
+    if (_searchController.text.isEmpty) {
+      return _buildEmptySearchState(
+        icon: Icons.description_rounded,
+        title: 'Tìm kiếm tài liệu',
+        subtitle: 'Tìm tài liệu học tập, đề thi, bài giảng',
       );
     }
 
-    return ListView.builder(
+    if (_documentResults.isEmpty) {
+      return _buildNoResultState('Không tìm thấy tài liệu nào');
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _documentResults.length,
+      separatorBuilder: (_, __) => const Divider(
+        height: 1,
+        thickness: 1,
+        color: AppColors.divider,
+      ),
       itemBuilder: (context, index) {
         final doc = _documentResults[index];
         return DocumentSearchItem(
           title: doc.title,
-          description: doc.description ?? '',
-          uploaderUsername: doc.uploaderUsername ?? 'Unknown',
-          uploaderAvatar: doc.uploaderAvatar,
-          fileType: doc.fileType ?? 'FILE',
+          description: doc.summary ?? '', // Sử dụng summary từ backend
+          uploaderUsername: 'N/A', // Backend không trả về uploader info
+          uploaderAvatar: null,
+          fileType: doc.type ?? 'FILE', // Sử dụng type từ backend
           price: doc.price,
-          downloads: doc.downloads,
+          downloads: 0, // Backend không trả về downloads
           onTap: () {
             // Navigate tới document detail screen
             Navigator.pushNamed(
@@ -374,6 +482,232 @@ class _SearchScreenState extends State<SearchScreen>
           },
         );
       },
+    );
+  }
+
+  // Shimmer Loading
+  Widget _buildShimmerLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Shimmer(
+            child: Container(
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Empty Search State với suggestions
+  Widget _buildEmptySearchState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          // Icon
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 50,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Title
+          Text(
+            title,
+            style: AppTextStyles.heading1.copyWith(fontSize: 20),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          // Subtitle
+          Text(
+            subtitle,
+            style: AppTextStyles.bodyRegular,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          // Search Suggestions
+          if (_recentSearches.isNotEmpty) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Tìm kiếm gần đây',
+                style: AppTextStyles.sectionTitle.copyWith(fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _recentSearches.map((query) {
+                return _buildSuggestionChip(query);
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // No Result State
+  Widget _buildNoResultState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: AppColors.subtitle.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.search_off_rounded,
+                size: 60,
+                color: AppColors.subtitle.withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              message,
+              style: AppTextStyles.bodyBold.copyWith(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Thử từ khóa khác hoặc kiểm tra chính tả',
+              style: AppTextStyles.bodyRegular.copyWith(
+                color: AppColors.subtitle,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Error State
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: AppColors.danger.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                size: 50,
+                color: AppColors.danger,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Đã có lỗi xảy ra',
+              style: AppTextStyles.bodyBold.copyWith(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: AppTextStyles.errorText,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _performGlobalSearch,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Thử lại'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Suggestion Chip
+  Widget _buildSuggestionChip(String label) {
+    return InkWell(
+      onTap: () {
+        _searchController.text = label;
+        _performGlobalSearch();
+      },
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.primaryLight,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: AppColors.primary.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.history_rounded,
+              size: 14,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: AppTextStyles.suggestionChip.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

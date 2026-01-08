@@ -6,10 +6,11 @@ import 'dart:async';
 import '../config/app_theme.dart';
 import '../models/notification_model.dart';
 import 'auth_service.dart';
+import 'api_client.dart';
 
 class NotificationService {
   static final String _baseUrl = AppAssets.userApiBaseUrl;
-  final AuthService _authService = AuthService();
+  final ApiClient _apiClient = ApiClient();
 
   // Get all notifications
   Future<Map<String, dynamic>> getNotifications({
@@ -18,21 +19,15 @@ class NotificationService {
     bool? isRead,
   }) async {
     try {
-      final token = await _authService.getValidToken();
-      if (token == null) throw Exception('Phiên đăng nhập hết hạn');
-
       String url = '$_baseUrl/notifications?page=$page&limit=$limit';
       if (isRead != null) {
         url += '&isRead=$isRead';
       }
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await _apiClient.get(
+        url,
+        timeout: const Duration(seconds: 30),
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
@@ -90,53 +85,58 @@ class NotificationService {
   // Mark notification as read
   Future<void> markAsRead(String notificationId) async {
     try {
-      final token = await _authService.getValidToken();
-      if (token == null) {
-        throw Exception('Phiên đăng nhập hết hạn');
-      }
-
       if (kDebugMode) {
         print('=== MARK NOTIFICATION AS READ ===');
         print('ID: $notificationId');
       }
 
-      final response = await http.patch(
-        Uri.parse('$_baseUrl/notifications/$notificationId/read'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final url = '$_baseUrl/notifications/$notificationId/read';
+      if (kDebugMode) print('📍 URL: $url');
 
-      if (response.statusCode != 200) {
-        final errorBody = json.decode(utf8.decode(response.bodyBytes));
-        throw Exception(errorBody['message'] ?? 'Lỗi đánh dấu đã đọc');
+      // Thử PATCH trước (RESTful standard)
+      final response = await _apiClient.patch(
+        url,
+        timeout: const Duration(seconds: 30),
+      );
+
+      if (kDebugMode) {
+        print('📥 Response Status: ${response.statusCode}');
+        print(
+            '📥 Response Body (first 200 chars): ${response.body.length > 200 ? response.body.substring(0, 200) : response.body}');
       }
 
-      if (kDebugMode) print('✓ Marked as read');
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        if (kDebugMode) {
+          print('❌ Mark as read failed with status: ${response.statusCode}');
+        }
+
+        try {
+          final errorBody = json.decode(utf8.decode(response.bodyBytes));
+          throw Exception(errorBody['message'] ?? 'Lỗi đánh dấu đã đọc');
+        } catch (e) {
+          if (kDebugMode) print('❌ Cannot parse error response as JSON: $e');
+          throw Exception('Lỗi đánh dấu đã đọc: ${response.statusCode}');
+        }
+      }
+
+      if (kDebugMode) print('✓ Marked as read successfully');
     } catch (e) {
-      if (kDebugMode) print('Error: $e');
-      // Không throw error để không ảnh hưởng UX
+      if (kDebugMode) {
+        print('❌ markAsRead Error: $e');
+      }
+      rethrow;
     }
   }
 
   // Mark all notifications as read
   Future<void> markAllAsRead() async {
     try {
-      final token = await _authService.getValidToken();
-      if (token == null) {
-        throw Exception('Phiên đăng nhập hết hạn');
-      }
-
       if (kDebugMode) print('=== MARK ALL AS READ ===');
 
-      final response = await http.patch(
-        Uri.parse('$_baseUrl/notifications/read-all'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await _apiClient.put(
+        '$_baseUrl/notifications/read-all',
+        timeout: const Duration(seconds: 30),
+      );
 
       if (response.statusCode != 200) {
         final errorBody = json.decode(utf8.decode(response.bodyBytes));
@@ -153,16 +153,10 @@ class NotificationService {
   // Get unread count
   Future<int> getUnreadCount() async {
     try {
-      final token = await _authService.getValidToken();
-      if (token == null) return 0;
-
-      final response = await http.get(
-        Uri.parse('$_baseUrl/notifications/unread-count'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await _apiClient.get(
+        '$_baseUrl/notifications/unread-count',
+        timeout: const Duration(seconds: 30),
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
@@ -178,18 +172,10 @@ class NotificationService {
   // Delete notification
   Future<void> deleteNotification(String notificationId) async {
     try {
-      final token = await _authService.getValidToken();
-      if (token == null) {
-        throw Exception('Phiên đăng nhập hết hạn');
-      }
-
-      final response = await http.delete(
-        Uri.parse('$_baseUrl/notifications/$notificationId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await _apiClient.delete(
+        '$_baseUrl/notifications/$notificationId',
+        timeout: const Duration(seconds: 30),
+      );
 
       if (response.statusCode != 200) {
         final errorBody = json.decode(utf8.decode(response.bodyBytes));

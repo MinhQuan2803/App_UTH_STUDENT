@@ -20,6 +20,22 @@ class TransactionModel {
 
   // Factory parse JSON
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    DateTime createdAtDate;
+    try {
+      final dateStr = (json['createdAt'] ?? '').toString().trim();
+      if (dateStr.isEmpty) {
+        createdAtDate = DateTime.now();
+      } else {
+        // Thêm 'Z' nếu chưa có để parse như UTC
+        final utcDateStr = dateStr.endsWith('Z') ? dateStr : '${dateStr}Z';
+        createdAtDate = DateTime.parse(utcDateStr).toLocal();
+      }
+    } catch (e) {
+      print("Error parsing transaction createdAt: ${json['createdAt']}");
+      print("Stack trace: $e");
+      createdAtDate = DateTime.now();
+    }
+    
     return TransactionModel(
       id: json['_id'] ?? '',
       amount: json['amount'] ?? 0,
@@ -27,7 +43,7 @@ class TransactionModel {
       type: json['type'] ?? '',
       description: json['description'] ?? 'Giao dịch',
       status: json['status'] ?? 'PENDING',
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      createdAt: createdAtDate,
     );
   }
 }

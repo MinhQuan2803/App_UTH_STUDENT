@@ -1,38 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
-import '../config/app_theme.dart'; // Import để dùng AppAssets
+import 'api_client.dart';
+import '../config/app_theme.dart';
 
 /// Service xử lý Follow/Unfollow users
 /// Dựa trên tài liệu API: follow-api-documentation.md
 class FollowService {
-  static final String baseUrl =
-      AppAssets.followApiBaseUrl; // Dùng URL chung từ AppAssets
-  final AuthService _authService = AuthService();
-
-  /// Lấy token hợp lệ (tự động refresh nếu cần)
-  Future<String?> _getToken() async {
-    return await _authService.getValidToken();
-  }
+  static final String baseUrl = AppAssets.followApiBaseUrl;
+  final ApiClient _apiClient = ApiClient();
 
   /// Lấy thông tin profile của một user theo username
   /// GET /api/users/profile/:username
   Future<UserProfile> getUserProfile(String username) async {
     try {
-      final token = await _getToken();
-      final url = Uri.parse('$baseUrl/profile/$username');
-
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-      };
-
-      // Thêm token nếu có (optional cho public info)
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-        headers['Cookie'] = 'token=$token';
-      }
-
-      final response = await http.get(url, headers: headers);
+      final response = await _apiClient.get('$baseUrl/profile/$username');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -53,26 +35,13 @@ class FollowService {
   /// POST /api/users/:userId/follow
   Future<FollowResult> followUser(String userId) async {
     try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Chưa đăng nhập');
-      }
-
-      final url = Uri.parse('$baseUrl/$userId/follow');
-
       print('=== FOLLOW USER DEBUG ===');
-      print('Base URL: $baseUrl');
       print('User ID: $userId');
-      print('Full URL: ${url.toString()}');
+      print('Full URL: $baseUrl/$userId/follow');
 
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-          'Cookie': 'token=$token',
-        },
-        body: json.encode({}),
+      final response = await _apiClient.post(
+        '$baseUrl/$userId/follow',
+        body: {},
       );
 
       print('Response status: ${response.statusCode}');
@@ -82,7 +51,6 @@ class FollowService {
         final data = json.decode(response.body);
         final message = data['message'] ?? 'Theo dõi thành công.';
 
-        // Kiểm tra xem đã follow trước đó chưa
         final alreadyFollowing =
             message.contains('Đã theo dõi người dùng này rồi');
 
@@ -110,23 +78,10 @@ class FollowService {
   /// DELETE /api/users/:userId/unfollow
   Future<FollowResult> unfollowUser(String userId) async {
     try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Chưa đăng nhập');
-      }
-
       print('=== UNFOLLOW USER DEBUG ===');
       print('User ID: $userId');
 
-      final url = Uri.parse('$baseUrl/$userId/unfollow');
-      final response = await http.delete(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-          'Cookie': 'token=$token',
-        },
-      );
+      final response = await _apiClient.delete('$baseUrl/$userId/unfollow');
 
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
@@ -135,7 +90,6 @@ class FollowService {
         final data = json.decode(response.body);
         final message = data['message'] ?? 'Bỏ theo dõi thành công.';
 
-        // Kiểm tra xem đã unfollow trước đó chưa
         final notFollowing =
             message.contains('Bạn chưa theo dõi người dùng này');
 
@@ -191,6 +145,139 @@ class FollowService {
     }
   }
   */
+
+  /// Lấy danh sách người theo dõi (Followers)
+  /// GET /api/follow/:userId/followers?page=1&limit=20
+  Future<FollowListResponse> getFollowers(String userId,
+      {int page = 1, int limit = 20}) async {
+    try {
+      final response = await _apiClient.get(
+        '$baseUrl/$userId/followers?page=$page&limit=$limit',
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return FollowListResponse.fromJson(data['data']);
+      } else if (response.statusCode == 404) {
+        throw Exception('Không tìm thấy người dùng');
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(
+            error['message'] ?? 'Không thể tải danh sách followers');
+      }
+    } catch (e) {
+      throw Exception('Lỗi khi tải followers: $e');
+    }
+  }
+
+  /// Lấy danh sách người đang theo dõi (Following)
+  /// GET /api/follow/:userId/following?page=1&limit=20
+  Future<FollowListResponse> getFollowing(String userId,
+      {int page = 1, int limit = 20}) async {
+    try {
+      final response = await _apiClient.get(
+        '$baseUrl/$userId/following?page=$page&limit=$limit',
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return FollowListResponse.fromJson(data['data']);
+      } else if (response.statusCode == 404) {
+        throw Exception('Không tìm thấy người dùng');
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(
+            error['message'] ?? 'Không thể tải danh sách following');
+      }
+    } catch (e) {
+      throw Exception('Lỗi khi tải following: $e');
+    }
+  }
+}
+
+/// Model cho danh sách follow
+class FollowListResponse {
+  final List<FollowUser> users;
+  final FollowPagination pagination;
+
+  FollowListResponse({
+    required this.users,
+    required this.pagination,
+  });
+
+  factory FollowListResponse.fromJson(Map<String, dynamic> json) {
+    // Backend trả về 'followers' hoặc 'following' tùy endpoint
+    final usersJson = json['followers'] ?? json['following'] ?? [];
+    return FollowListResponse(
+      users:
+          (usersJson as List).map((user) => FollowUser.fromJson(user)).toList(),
+      pagination: FollowPagination.fromJson(json['pagination']),
+    );
+  }
+}
+
+/// Model cho pagination
+class FollowPagination {
+  final int currentPage;
+  final int totalPages;
+  final int total;
+  final bool hasMore;
+
+  FollowPagination({
+    required this.currentPage,
+    required this.totalPages,
+    required this.total,
+    required this.hasMore,
+  });
+
+  factory FollowPagination.fromJson(Map<String, dynamic> json) {
+    return FollowPagination(
+      currentPage: json['currentPage'] ?? 1,
+      totalPages: json['totalPages'] ?? 1,
+      total: json['totalFollowers'] ?? json['totalFollowing'] ?? 0,
+      hasMore: json['hasMore'] ?? false,
+    );
+  }
+}
+
+/// Model cho user trong danh sách follow
+class FollowUser {
+  final String id;
+  final String username;
+  final String? realname;
+  final String? avatarUrl;
+  final String? bio;
+  final int followerCount;
+  final int followingCount;
+  final String? followedAt;
+  bool isFollowing; // Trạng thái có đang follow user này không
+
+  FollowUser({
+    required this.id,
+    required this.username,
+    this.realname,
+    this.avatarUrl,
+    this.bio,
+    required this.followerCount,
+    required this.followingCount,
+    this.followedAt,
+    this.isFollowing = false, // Mặc định là chưa follow
+  });
+
+  factory FollowUser.fromJson(Map<String, dynamic> json) {
+    return FollowUser(
+      id: json['id'] ?? '',
+      username: json['username'] ?? '',
+      realname: json['realname'],
+      avatarUrl: json['avatarUrl'],
+      bio: json['bio'],
+      followerCount: json['followerCount'] ?? 0,
+      followingCount: json['followingCount'] ?? 0,
+      followedAt: json['followedAt'],
+      isFollowing:
+          json['isFollowing'] ?? false, // Backend có thể trả về field này
+    );
+  }
 }
 
 /// Model cho User Profile

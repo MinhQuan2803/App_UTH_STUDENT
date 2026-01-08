@@ -92,8 +92,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     final bool success = responseData['success'] ?? false;
     final String message = responseData['message'] ?? 'Lỗi không xác định';
-    final bool isProfileCompleted =
-        responseData['isProfileCompleted'] ?? false;
+    final bool isProfileCompleted = responseData['isProfileCompleted'] ?? false;
 
     if (success) {
       // Gửi FCM token lên server sau khi login thành công

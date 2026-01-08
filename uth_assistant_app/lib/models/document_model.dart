@@ -80,29 +80,54 @@ class DocumentModel {
 
   /// Helper: Tạo preview URL từ PDF URL (Cloudinary transform)
   static String _generatePreviewUrl(dynamic url, dynamic previewUrl) {
-    // Nếu có previewUrl sẵn từ backend → dùng luôn
+    // Debug log
+    print('📸 Generating preview URL:');
+    print('   Input URL: $url');
+    print('   Input previewUrl: $previewUrl');
+
+    // Nếu có previewUrl sẵn từ backend → kiểm tra xem có phải PDF không
     if (previewUrl != null && previewUrl.toString().trim().isNotEmpty) {
-      return previewUrl.toString();
+      final previewUrlStr = previewUrl.toString();
+
+      // Nếu backend trả về PDF thay vì ảnh thumbnail → cần transform
+      if (previewUrlStr.toLowerCase().endsWith('.pdf')) {
+        print('   ⚠️ Backend previewUrl is still PDF, will transform it');
+        // Tiếp tục xuống dưới để transform
+      } else {
+        // previewUrl đã là ảnh JPG/PNG → dùng luôn
+        print('   ✓ Using backend previewUrl (image): $previewUrlStr');
+        return previewUrlStr;
+      }
     }
 
     // Nếu không có URL gốc → return rỗng
     if (url == null || url.toString().trim().isEmpty) {
+      print('   ⚠️ No URL provided, returning empty');
       return '';
     }
 
-    final urlStr = url.toString();
+    // Sử dụng previewUrl nếu nó là PDF, nếu không thì dùng url
+    final urlStr =
+        (previewUrl != null && previewUrl.toString().trim().isNotEmpty)
+            ? previewUrl.toString()
+            : url.toString();
+    print('   Processing URL: $urlStr');
 
     // Chỉ xử lý URL Cloudinary PDF
     if (!urlStr.contains('cloudinary.com') || !urlStr.endsWith('.pdf')) {
+      print('   ℹ️ Not a Cloudinary PDF URL, using as-is');
       return urlStr; // Không phải Cloudinary PDF → trả về nguyên
     }
 
     // Convert PDF → JPG (trang 1) với Cloudinary transform
     // https://res.cloudinary.com/xxx/image/upload/v123/folder/file.pdf
     // → https://res.cloudinary.com/xxx/image/upload/w_400,h_500,c_fill,f_jpg,pg_1/v123/folder/file.jpg
-    return urlStr
+    final transformedUrl = urlStr
         .replaceFirst('/upload/', '/upload/w_400,h_500,c_fill,f_jpg,pg_1/')
         .replaceAll('.pdf', '.jpg');
+
+    print('   ✓ Transformed to: $transformedUrl');
+    return transformedUrl;
   }
 
   // --- LOGIC MỚI: Lấy URL theo quyền truy cập ---

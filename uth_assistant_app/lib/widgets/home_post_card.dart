@@ -78,14 +78,16 @@ class _HomePostCardState extends State<HomePostCard> {
     });
 
     try {
-      // Gọi API toggle like
-      final result = await _interactionService.toggleLike(widget.post.id);
+      // Gọi API toggle like (backend chỉ trả newReactionType, không trả count)
+      final newReactionType =
+          await _postService.likePost(widget.post.id, type: 'like');
 
-      // Cập nhật với data thật từ server
+      // Cập nhật state dựa vào response từ backend
       if (mounted) {
         setState(() {
-          _isLiked = result['isLiked'] ?? false;
-          _likesCount = result['likesCount'] ?? _likesCount;
+          _isLiked = newReactionType == 'like';
+          _isDisliked = newReactionType == 'dislike';
+          // Count đã được cập nhật trong optimistic update, giữ nguyên
         });
       }
     } catch (e) {
@@ -134,9 +136,20 @@ class _HomePostCardState extends State<HomePostCard> {
 
     try {
       // Gọi API với type='dislike'
-      await _postService.likePost(widget.post.id, type: 'dislike');
+      final newReactionType =
+          await _postService.likePost(widget.post.id, type: 'dislike');
 
-      if (kDebugMode) print('✓ Dislike thành công');
+      // Cập nhật state dựa vào response từ backend
+      if (mounted) {
+        setState(() {
+          _isDisliked = newReactionType == 'dislike';
+          _isLiked = newReactionType == 'like';
+          // Count đã được cập nhật trong optimistic update, giữ nguyên
+        });
+      }
+
+      if (kDebugMode)
+        print('✓ Dislike thành công: newReactionType=$newReactionType');
     } catch (e) {
       if (kDebugMode) print("Lỗi khi dislike: $e");
       // Rollback optimistic update
@@ -262,6 +275,19 @@ class _HomePostCardState extends State<HomePostCard> {
       context,
       '/post_detail',
       arguments: {'post': widget.post},
+    );
+  }
+
+  // Điều hướng đến màn hình xem reactions
+  void _navigateToReactions() {
+    Navigator.pushNamed(
+      context,
+      '/reactions',
+      arguments: {
+        'postId': widget.post.id,
+        'initialLikesCount': _likesCount,
+        'initialDislikesCount': _dislikesCount,
+      },
     );
   }
 
@@ -592,10 +618,12 @@ class _HomePostCardState extends State<HomePostCard> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final totalReactions = _likesCount + _dislikesCount;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12.0, 8.0, 8.0, 12.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
             height: 35,
@@ -665,6 +693,70 @@ class _HomePostCardState extends State<HomePostCard> {
               ],
             ),
           ),
+          // Icon hiển thị tổng số reactions
+          if (totalReactions > 0)
+            InkWell(
+              onTap: _navigateToReactions,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.primary.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Icon like nếu có
+                    if (_likesCount > 0)
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.favorite,
+                          size: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    // Icon dislike nếu có
+                    if (_dislikesCount > 0) ...[
+                      if (_likesCount > 0) const SizedBox(width: 4),
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: AppColors.danger,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.thumb_down,
+                          size: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 6),
+                    Text(
+                      '$totalReactions',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -819,7 +911,7 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.count,
     required this.color,
-    this.onTap, // Có thể null
+    this.onTap,
   });
 
   @override

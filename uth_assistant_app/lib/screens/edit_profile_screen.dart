@@ -3,7 +3,6 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../config/app_theme.dart';
 import '../widgets/modern_app_bar.dart';
-import '../widgets/custom_button.dart';
 import '../widgets/custom_notification.dart';
 import '../services/profile_service.dart';
 
@@ -24,6 +23,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _usernameController;
+  late TextEditingController _realnameController;
   late TextEditingController _bioController;
 
   File? _selectedImage;
@@ -36,18 +36,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _usernameController = TextEditingController(
       text: widget.currentUser['username'] ?? '',
     );
+    _realnameController = TextEditingController(
+      text: widget.currentUser['realname'] ?? '',
+    );
     _bioController = TextEditingController(
       text: widget.currentUser['bio'] ?? '',
     );
 
     // Lắng nghe thay đổi
     _usernameController.addListener(_checkForChanges);
+    _realnameController.addListener(_checkForChanges);
     _bioController.addListener(_checkForChanges);
   }
 
   @override
   void dispose() {
     _usernameController.dispose();
+    _realnameController.dispose();
     _bioController.dispose();
     super.dispose();
   }
@@ -55,12 +60,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _checkForChanges() {
     final hasUsernameChanged =
         _usernameController.text != (widget.currentUser['username'] ?? '');
+    final hasRealnameChanged =
+        _realnameController.text != (widget.currentUser['realname'] ?? '');
     final hasBioChanged =
         _bioController.text != (widget.currentUser['bio'] ?? '');
     final hasImageChanged = _selectedImage != null;
 
     setState(() {
-      _hasChanges = hasUsernameChanged || hasBioChanged || hasImageChanged;
+      _hasChanges = hasUsernameChanged ||
+          hasRealnameChanged ||
+          hasBioChanged ||
+          hasImageChanged;
     });
   }
 
@@ -152,15 +162,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         print('✓ Avatar upload result: $result');
       }
 
-      // 2. Cập nhật thông tin profile (username, bio)
+      // 2. Cập nhật thông tin profile (username, realname, bio)
       final username = _usernameController.text.trim();
+      final realname = _realnameController.text.trim();
       final bio = _bioController.text.trim();
 
       if (username != widget.currentUser['username'] ||
+          realname != (widget.currentUser['realname'] ?? '') ||
           bio != (widget.currentUser['bio'] ?? '')) {
         print('📝 Updating profile details...');
         await _profileService.updateProfileDetails(
           username: username,
+          realname: realname.isEmpty ? null : realname,
           bio: bio.isEmpty ? null : bio,
         );
         print('✓ Profile details updated');
@@ -230,70 +243,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppAssets.paddingLarge),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Avatar section
+                    // Avatar section với animation
                     _buildAvatarSection(currentAvatarUrl),
                     const SizedBox(height: 32),
 
-                    // Username field
-                    _buildTextField(
-                      controller: _usernameController,
-                      label: 'Username',
-                      hint: 'Nhập username của bạn',
-                      icon: Icons.person,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Username không được để trống';
-                        }
-                        if (value.trim().length < 3) {
-                          return 'Username phải có ít nhất 3 ký tự';
-                        }
-                        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                          return 'Username chỉ chứa chữ, số và dấu gạch dưới';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
+                    // Card chứa các form fields
+                    _buildFormCard(),
 
-                    // Bio field
-                    _buildTextField(
-                      controller: _bioController,
-                      label: 'Tiểu sử',
-                      hint: 'Viết vài dòng về bản thân...',
-                      icon: Icons.edit_note,
-                      maxLines: 4,
-                      maxLength: 200,
-                      validator: (value) {
-                        if (value != null && value.length > 200) {
-                          return 'Tiểu sử không được quá 200 ký tự';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
-                    // Save button
-                    SizedBox(
-                      width: double.infinity,
-                      child: Opacity(
-                        opacity: _hasChanges ? 1.0 : 0.5,
-                        child: CustomButton(
-                          text: 'Lưu thay đổi',
-                          onPressed: () {
-                            if (_hasChanges) {
-                              _saveChanges();
-                            }
-                          },
-                          isPrimary: true,
-                        ),
-                      ),
-                    ),
+                    // Save button với gradient
+                    _buildSaveButton(),
                   ],
                 ),
               ),
@@ -306,52 +272,83 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       children: [
         Stack(
           children: [
-            // Avatar
+            // Avatar với hiệu ứng shadow hiện đại
             Container(
-              width: 120,
-              height: 120,
+              width: 130,
+              height: 130,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3),
-                  width: 3,
+                gradient: const LinearGradient(
+                  colors: [
+                    AppColors.avatarBorderGradientStart,
+                    AppColors.avatarBorderGradientEnd,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(4),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.white,
+                ),
+                padding: const EdgeInsets.all(3),
+                child: ClipOval(
+                  child: _selectedImage != null
+                      ? Image.file(
+                          _selectedImage!,
+                          fit: BoxFit.cover,
+                        )
+                      : (currentAvatarUrl != null && currentAvatarUrl.isNotEmpty
+                          ? Image.network(
+                              currentAvatarUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return _buildDefaultAvatar();
+                              },
+                            )
+                          : _buildDefaultAvatar()),
                 ),
               ),
-              child: ClipOval(
-                child: _selectedImage != null
-                    ? Image.file(
-                        _selectedImage!,
-                        fit: BoxFit.cover,
-                      )
-                    : (currentAvatarUrl != null && currentAvatarUrl.isNotEmpty
-                        ? Image.network(
-                            currentAvatarUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildDefaultAvatar();
-                            },
-                          )
-                        : _buildDefaultAvatar()),
-              ),
             ),
-            // Edit button
+            // Edit button với gradient
             Positioned(
               bottom: 0,
               right: 0,
               child: GestureDetector(
                 onTap: _pickImage,
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    gradient: const LinearGradient(
+                      colors: [
+                        AppColors.primary,
+                        AppColors.primaryDark,
+                      ],
+                    ),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.background,
+                      color: AppColors.white,
                       width: 3,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.5),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: const Icon(
-                    Icons.camera_alt,
+                    Icons.camera_alt_rounded,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -363,9 +360,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         const SizedBox(height: 12),
         Text(
           'Nhấn vào camera để đổi ảnh',
-          style: TextStyle(
+          style: AppTextStyles.caption.copyWith(
             color: AppColors.textSecondary,
-            fontSize: 14,
           ),
         ),
       ],
@@ -374,16 +370,172 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildDefaultAvatar() {
     return Container(
-      color: AppColors.primary.withOpacity(0.1),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withOpacity(0.1),
+            AppColors.primaryLight,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
       child: Icon(
-        Icons.person,
+        Icons.person_rounded,
         size: 60,
         color: AppColors.primary.withOpacity(0.5),
       ),
     );
   }
 
-  Widget _buildTextField({
+  // Widget chứa form với card design
+  Widget _buildFormCard() {
+    return Container(
+      padding: const EdgeInsets.all(AppAssets.paddingLarge),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppAssets.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section title
+          Row(
+            children: [
+              Icon(
+                Icons.edit_rounded,
+                color: AppColors.primary,
+                size: AppAssets.iconSizeSmall,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Thông tin cá nhân',
+                style: AppTextStyles.sectionTitle.copyWith(
+                  color: AppColors.text,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Username field
+          _buildModernTextField(
+            controller: _usernameController,
+            label: 'Tên đăng nhập',
+            hint: 'Nhập username của bạn',
+            icon: Icons.alternate_email_rounded,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Username không được để trống';
+              }
+              if (value.trim().length < 3) {
+                return 'Username phải có ít nhất 3 ký tự';
+              }
+              if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                return 'Username chỉ chứa chữ, số và dấu gạch dưới';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Realname field
+          _buildModernTextField(
+            controller: _realnameController,
+            label: 'Tên thật',
+            hint: 'Nhập tên thật của bạn',
+            icon: Icons.person_rounded,
+            validator: (value) {
+              if (value != null && value.trim().isNotEmpty) {
+                if (value.trim().length < 2) {
+                  return 'Tên thật phải có ít nhất 2 ký tự';
+                }
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Bio field
+          _buildModernTextField(
+            controller: _bioController,
+            label: 'Tiểu sử',
+            hint: 'Viết vài dòng về bản thân...',
+            icon: Icons.description_rounded,
+            maxLines: 4,
+            maxLength: 200,
+            validator: (value) {
+              if (value != null && value.length > 200) {
+                return 'Tiểu sử không được quá 200 ký tự';
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Save button với gradient hiện đại
+  Widget _buildSaveButton() {
+    return AnimatedOpacity(
+      opacity: _hasChanges ? 1.0 : 0.5,
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        width: double.infinity,
+        height: AppAssets.buttonHeightMedium,
+        decoration: BoxDecoration(
+          gradient: _hasChanges
+              ? const LinearGradient(
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primaryDark,
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                )
+              : null,
+          color: _hasChanges ? null : AppColors.divider,
+          borderRadius: BorderRadius.circular(AppAssets.borderRadiusMedium),
+          boxShadow: _hasChanges
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppAssets.borderRadiusMedium),
+            onTap: _hasChanges ? _saveChanges : null,
+            child: Center(
+              child: Text(
+                'Lưu thay đổi',
+                style: AppTextStyles.button.copyWith(
+                  color: _hasChanges ? AppColors.white : Colors.black,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernTextField({
     required TextEditingController controller,
     required String label,
     required String hint,
@@ -397,9 +549,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+          style: AppTextStyles.bodyBold.copyWith(
+            fontSize: 14,
             color: AppColors.text,
           ),
         ),
@@ -409,38 +560,58 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           validator: validator,
           maxLines: maxLines,
           maxLength: maxLength,
+          style: AppTextStyles.bodyRegular.copyWith(
+            fontSize: 15,
+            color: AppColors.text,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon, color: AppColors.primary),
+            hintStyle: AppTextStyles.hintText,
+            prefixIcon: Icon(
+              icon,
+              color: AppColors.primary,
+              size: AppAssets.iconSizeMedium,
+            ),
             filled: true,
-            fillColor: AppColors.white,
+            fillColor: AppColors.primaryLight.withOpacity(0.3),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppAssets.borderRadiusMedium),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppAssets.borderRadiusMedium),
               borderSide: BorderSide(
                 color: AppColors.divider,
+                width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppAssets.borderRadiusMedium),
               borderSide: const BorderSide(
                 color: AppColors.primary,
                 width: 2,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppAssets.borderRadiusMedium),
               borderSide: const BorderSide(
                 color: AppColors.accent,
+                width: 1,
               ),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppAssets.borderRadiusMedium),
+              borderSide: const BorderSide(
+                color: AppColors.accent,
+                width: 2,
+              ),
             ),
+            errorStyle: AppTextStyles.errorText.copyWith(fontSize: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppAssets.paddingMedium,
+              vertical: AppAssets.paddingMedium,
+            ),
+            counterStyle: AppTextStyles.caption,
           ),
         ),
       ],

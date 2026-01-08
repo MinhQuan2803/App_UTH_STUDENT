@@ -239,6 +239,13 @@ class FCMService {
         );
         if (kDebugMode) print('✓ Navigated to profile');
       }
+    } else if (type == 'wallet' || type == 'balance') {
+      // 💰 Biến động số dư: Chuyển đến màn hình ví
+      if (kDebugMode) print('→ Navigate to WalletScreen (Balance change)');
+
+      navigatorKey.currentState?.pushNamed('/wallet');
+
+      if (kDebugMode) print('✓ Navigated to wallet');
     } else {
       if (kDebugMode) print('⚠️ Unknown notification type: $type');
     }

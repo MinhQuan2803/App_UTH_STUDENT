@@ -4,11 +4,13 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'auth_service.dart';
+import 'api_client.dart';
 import '../config/app_theme.dart';
 
 class ProfileService {
   static final String _baseUrl = AppAssets.userApiBaseUrl;
   final AuthService _authService = AuthService();
+  final ApiClient _apiClient = ApiClient();
 
   // Cache cho profile của mình
   static Map<String, dynamic>? _cachedMyProfile;
@@ -37,22 +39,11 @@ class ProfileService {
       }
     }
 
-    final String? token = await _authService.getValidToken();
-
-    if (token == null) {
-      throw Exception('401: Chưa đăng nhập');
-    }
-
     if (kDebugMode) print('=== GET MY PROFILE (from /me) ===');
 
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-
-    final response = await http
-        .get(Uri.parse('$_baseUrl/me'), headers: headers)
-        .timeout(const Duration(seconds: 20));
+    // ApiClient tự động thêm token và xử lý 401
+    final response = await _apiClient.get('$_baseUrl/me',
+        timeout: const Duration(seconds: 20));
 
     if (kDebugMode) print('Response status: ${response.statusCode}');
 
@@ -69,8 +60,6 @@ class ProfileService {
 
       if (kDebugMode) print('✓ My username: ${userData['username']}');
       return userData;
-    } else if (response.statusCode == 401) {
-      throw Exception('401: Phiên đăng nhập không hợp lệ');
     } else {
       throw Exception('Lỗi Server: ${response.statusCode}');
     }
@@ -141,41 +130,36 @@ class ProfileService {
     }
   }
 
-  /// Cập nhật thông tin profile (username, bio)
+  /// Cập nhật thông tin profile (username, realname, bio)
   /// PATCH /api/users/me/update
   Future<Map<String, dynamic>> updateProfileDetails({
     required String username,
+    String? realname,
     String? bio,
   }) async {
-    final String? token = await _authService.getValidToken();
-
-    if (token == null) {
-      throw Exception('401: Chưa đăng nhập');
-    }
-
     if (kDebugMode) {
       print('=== UPDATE PROFILE DETAILS ===');
       print('Username: $username');
+      print('Realname: ${realname ?? "(unchanged)"}');
       print('Bio: ${bio ?? "(unchanged)"}');
     }
 
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
+    final body = {
+      'username': username,
+      if (realname != null) 'realname': realname,
+      if (bio != null) 'bio': bio,
     };
 
-    final body = jsonEncode({
-      'username': username,
-      if (bio != null) 'bio': bio,
-    });
+    if (kDebugMode) {
+      print('Request body: $body');
+      print('API URL: $_baseUrl/me/update');
+    }
 
-    final response = await http
-        .patch(
-          Uri.parse('$_baseUrl/me/update'),
-          headers: headers,
-          body: body,
-        )
-        .timeout(const Duration(seconds: 20));
+    final response = await _apiClient.patch(
+      '$_baseUrl/me/update',
+      body: body,
+      timeout: const Duration(seconds: 20),
+    );
 
     if (kDebugMode) print('Response status: ${response.statusCode}');
 
@@ -203,8 +187,6 @@ class ProfileService {
       throw Exception('Username này đã được sử dụng');
     } else if (response.statusCode == 404) {
       throw Exception('Không tìm thấy người dùng');
-    } else if (response.statusCode == 401) {
-      throw Exception('401: Phiên đăng nhập không hợp lệ');
     } else {
       throw Exception('Lỗi Server: ${response.statusCode}');
     }
@@ -332,28 +314,16 @@ class ProfileService {
   /// POST /api/users/complete-profile
   Future<Map<String, dynamic>> completeProfile({
     required String realname,
-    dynamic avatarFile, // File? cho mobile hoặc XFile? cho web
+    dynamic avatarFile,
   }) async {
-    final String? token = await _authService.getValidToken();
-
-    if (token == null) {
-      throw Exception('401: Chưa đăng nhập');
-    }
-
     if (kDebugMode) {
       print('=== COMPLETE PROFILE ===');
       print('Realname: $realname');
       print('Has avatar: ${avatarFile != null}');
     }
 
-    final uri = Uri.parse('$_baseUrl/complete-profile');
-    final request = http.MultipartRequest('POST', uri);
-
-    // Headers
-    request.headers['Authorization'] = 'Bearer $token';
-
-    // Body fields
-    request.fields['realname'] = realname;
+    final fields = {'realname': realname};
+    final files = <http.MultipartFile>[];
 
     // Avatar file (optional)
     if (avatarFile != null) {
@@ -363,11 +333,9 @@ class ProfileService {
       // Xử lý File hoặc XFile
       if (avatarFile.runtimeType.toString() == 'File' ||
           avatarFile.runtimeType.toString() == '_File') {
-        // Mobile: File
         imagePath = avatarFile.path;
         fileName = imagePath?.split('/').last;
       } else if (avatarFile.runtimeType.toString().contains('XFile')) {
-        // Web: XFile
         imagePath = avatarFile.path;
         fileName = avatarFile.name;
       }
@@ -377,13 +345,13 @@ class ProfileService {
         final mimeTypeParts = mimeType.split('/');
 
         final file = await http.MultipartFile.fromPath(
-          'file', // Field name cho backend
+          'file',
           imagePath,
           filename: fileName,
           contentType: MediaType(mimeTypeParts[0], mimeTypeParts[1]),
         );
 
-        request.files.add(file);
+        files.add(file);
 
         if (kDebugMode) {
           print('✓ Avatar file added: $fileName');
@@ -392,8 +360,15 @@ class ProfileService {
       }
     }
 
-    final streamedResponse =
-        await request.send().timeout(const Duration(seconds: 30));
+    // Sử dụng ApiClient cho multipart request
+    final streamedResponse = await _apiClient.multipartRequest(
+      'POST',
+      '$_baseUrl/complete-profile',
+      fields: fields,
+      files: files,
+      timeout: const Duration(seconds: 30),
+    );
+
     final response = await http.Response.fromStream(streamedResponse);
 
     if (kDebugMode) {
@@ -419,8 +394,6 @@ class ProfileService {
     } else if (response.statusCode == 400) {
       final errorData = jsonDecode(response.body);
       throw Exception(errorData['message'] ?? 'Dữ liệu không hợp lệ');
-    } else if (response.statusCode == 401) {
-      throw Exception('401: Phiên đăng nhập không hợp lệ');
     } else {
       try {
         final errorData = jsonDecode(response.body);

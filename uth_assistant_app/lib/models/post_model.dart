@@ -27,9 +27,15 @@ class Author {
       followerCount: json['followerCount'] ?? 0,
       followingCount: json['followingCount'] ?? 0,
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(_ensureUtcFormat(json['createdAt'])).toLocal()
           : DateTime.now(),
     );
+  }
+
+  // Helper method để đảm bảo format UTC
+  static String _ensureUtcFormat(String dateStr) {
+    final trimmed = dateStr.trim();
+    return trimmed.endsWith('Z') ? trimmed : '${trimmed}Z';
   }
 
   // Getter để lấy tên hiển thị (ưu tiên realname, fallback username)
@@ -79,13 +85,16 @@ class Post {
       }
     }
 
-    // Parse createdAt thành DateTime, xử lý lỗi nếu có
+    // Parse createdAt thành DateTime và convert sang local time, xử lý lỗi nếu có
     DateTime createdAtDate;
     try {
-      createdAtDate =
-          DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String());
+      final dateStr = (json['createdAt'] ?? DateTime.now().toIso8601String()).toString().trim();
+      // Thêm 'Z' nếu chưa có để parse như UTC
+      final utcDateStr = dateStr.endsWith('Z') ? dateStr : '${dateStr}Z';
+      createdAtDate = DateTime.parse(utcDateStr).toLocal();
     } catch (e) {
       print("Error parsing post createdAt: ${json['createdAt']}");
+      print("Stack trace: $e");
       createdAtDate = DateTime.now();
     }
 

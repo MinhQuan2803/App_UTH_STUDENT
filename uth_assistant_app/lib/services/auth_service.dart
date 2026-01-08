@@ -440,6 +440,9 @@ class AuthService {
           if (kDebugMode) print('⚠ Network error, using old token');
           return token;
         }
+        // Token hết hạn + không refresh được → Logout
+        if (kDebugMode) print('❌ Token expired + network error → Logout');
+        if (autoRedirect) await signOut();
         return null;
       } else {
         if (autoRedirect) await signOut();

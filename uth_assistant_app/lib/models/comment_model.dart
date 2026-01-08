@@ -26,9 +26,13 @@ class Comment {
   factory Comment.fromJson(Map<String, dynamic> json) {
     DateTime createdAtDate;
     try {
-      createdAtDate = DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String());
+      final dateStr = (json['createdAt'] ?? DateTime.now().toIso8601String()).toString().trim();
+      // Thêm 'Z' nếu chưa có để parse như UTC
+      final utcDateStr = dateStr.endsWith('Z') ? dateStr : '${dateStr}Z';
+      createdAtDate = DateTime.parse(utcDateStr).toLocal();
     } catch (e) {
       print("Error parsing comment createdAt: ${json['createdAt']}");
+      print("Stack trace: $e");
       createdAtDate = DateTime.now();
     }
 

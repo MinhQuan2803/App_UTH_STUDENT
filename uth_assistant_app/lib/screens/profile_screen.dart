@@ -240,71 +240,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  void _showMenuBottomSheet(BuildContext context, bool isOwner) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 12),
-          if (isOwner) ...[
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text("Chỉnh sửa hồ sơ"),
-              onTap: () async {
-                Navigator.pop(context);
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => EditProfileScreen(currentUser: _user!)),
-                );
-                if (result == true) _loadAllData(forceRefresh: true);
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title:
-                  const Text("Đăng xuất", style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _handleSignOut(context);
-              },
-            ),
-          ] else ...[
-            ListTile(
-              leading: const Icon(Icons.report_gmailerrorred_outlined),
-              title: const Text("Báo cáo"),
-              onTap: () {
-                Navigator.pop(context); // Đóng bottom sheet
-                _showReportDialog(); // Hiện dialog báo cáo
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.block, color: Colors.red),
-              title: const Text("Chặn người dùng",
-                  style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                CustomNotification.info(context, 'Tính năng đang phát triển');
-              },
-            ),
-          ],
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
-
   // Hiển thị dialog báo cáo user
   void _showReportDialog() {
     if (_user == null) return;
@@ -686,7 +621,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               automaticallyImplyLeading: false,
               actions: [
-                IconButton(
+                PopupMenuButton<String>(
                   icon: SvgPicture.asset(
                     AppAssets.iconSetting,
                     width: 24,
@@ -694,7 +629,94 @@ class _ProfileScreenState extends State<ProfileScreen>
                     colorFilter:
                         ColorFilter.mode(currentColor, BlendMode.srcIn),
                   ),
-                  onPressed: () => _showMenuBottomSheet(context, isOwner),
+                  color: AppColors.white,
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  offset: const Offset(0, 45),
+                  itemBuilder: (BuildContext context) => isOwner
+                      ? [
+                          PopupMenuItem<String>(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined,
+                                    color: AppColors.text, size: 20),
+                                const SizedBox(width: 12),
+                                Text('Chỉnh sửa hồ sơ',
+                                    style: AppTextStyles.listItem
+                                        .copyWith(fontSize: 14)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(),
+                          PopupMenuItem<String>(
+                            value: 'logout',
+                            child: Row(
+                              children: [
+                                const Icon(Icons.logout,
+                                    color: AppColors.danger, size: 20),
+                                const SizedBox(width: 12),
+                                Text('Đăng xuất',
+                                    style: AppTextStyles.listItem.copyWith(
+                                        fontSize: 14, color: AppColors.danger)),
+                              ],
+                            ),
+                          ),
+                        ]
+                      : [
+                          PopupMenuItem<String>(
+                            value: 'report',
+                            child: Row(
+                              children: [
+                                Icon(Icons.report_gmailerrorred_outlined,
+                                    color: AppColors.text, size: 20),
+                                const SizedBox(width: 12),
+                                Text('Báo cáo',
+                                    style: AppTextStyles.listItem
+                                        .copyWith(fontSize: 14)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(),
+                          PopupMenuItem<String>(
+                            value: 'block',
+                            child: Row(
+                              children: [
+                                const Icon(Icons.block,
+                                    color: AppColors.danger, size: 20),
+                                const SizedBox(width: 12),
+                                Text('Chặn người dùng',
+                                    style: AppTextStyles.listItem.copyWith(
+                                        fontSize: 14, color: AppColors.danger)),
+                              ],
+                            ),
+                          ),
+                        ],
+                  onSelected: (String value) async {
+                    switch (value) {
+                      case 'edit':
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  EditProfileScreen(currentUser: _user!)),
+                        );
+                        if (result == true) _loadAllData(forceRefresh: true);
+                        break;
+                      case 'logout':
+                        _handleSignOut(context);
+                        break;
+                      case 'report':
+                        _showReportDialog();
+                        break;
+                      case 'block':
+                        CustomNotification.info(
+                            context, 'Tính năng đang phát triển');
+                        break;
+                    }
+                  },
                 ),
               ],
             ),

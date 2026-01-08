@@ -310,10 +310,10 @@ class AppAssets {
   static const String _imagesPicPath = 'assets/images_pic';
 
   // --- API URLS ---
-  static const bool _isLocal = true; // Chuyển sang false để dùng production
+  static const bool _isLocal = false; // Chuyển sang false để dùng production
   static const String _prodBaseUrl = 'https://uthstudent.onrender.com/api';
   // TODO: Thay '192.168.1.11' bằng IP Wifi của máy tính bạn
-  static const String _localBaseUrl = 'http://192.168.2.9:5000/api';
+  static const String _localBaseUrl = 'http://192.168.2.5:5000/api';
 
   static final String _apiBaseUrl = _isLocal ? _localBaseUrl : _prodBaseUrl;
 

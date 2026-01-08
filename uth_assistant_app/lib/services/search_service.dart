@@ -111,37 +111,34 @@ class SearchUser {
 class SearchDocument {
   final String id;
   final String title;
-  final String? description;
-  final String? fileUrl;
-  final String? fileType;
+  final String? summary; // Backend gửi "summary" không phải "description"
+  final String? url; // Backend gửi "url" không phải "fileUrl"
+  final String? type; // Backend gửi "type" không phải "fileType"
+  final String? mimeType;
+  final String? thumbnail;
   final int price;
-  final String? uploaderUsername;
-  final String? uploaderAvatar;
-  final int downloads;
 
   SearchDocument({
     required this.id,
     required this.title,
-    this.description,
-    this.fileUrl,
-    this.fileType,
+    this.summary,
+    this.url,
+    this.type,
+    this.mimeType,
+    this.thumbnail,
     required this.price,
-    this.uploaderUsername,
-    this.uploaderAvatar,
-    required this.downloads,
   });
 
   factory SearchDocument.fromJson(Map<String, dynamic> json) {
     return SearchDocument(
       id: json['_id'] ?? '',
       title: json['title'] ?? '',
-      description: json['description'],
-      fileUrl: json['fileUrl'],
-      fileType: json['fileType'],
+      summary: json['summary'], // Backend trả về "summary"
+      url: json['url'], // Backend trả về "url"
+      type: json['type'], // Backend trả về "type" (pdf, docx, etc)
+      mimeType: json['mimeType'],
+      thumbnail: json['thumbnail'],
       price: json['price'] ?? 0,
-      uploaderUsername: json['uploader']?['username'],
-      uploaderAvatar: json['uploader']?['avatarUrl'],
-      downloads: json['downloads'] ?? 0,
     );
   }
 }

@@ -336,4 +336,41 @@ class PostService {
       throw _handleNetworkError(e);
     }
   }
+
+  /// Lấy danh sách người đã react bài viết
+  /// GET /api/posts/:postId/reactions?type=all|like|dislike&page=1&limit=20
+  Future<Map<String, dynamic>> getPostReactions({
+    required String postId,
+    String type = 'all', // 'all', 'like', 'dislike'
+    int page = 1,
+    int limit = 20,
+  }) async {
+    if (kDebugMode) {
+      print('=== GET POST REACTIONS: $postId ===');
+      print('Type: $type, Page: $page, Limit: $limit');
+    }
+
+    final uri = Uri.parse('$_baseUrl/$postId/reactions').replace(
+      queryParameters: {
+        'type': type,
+        'page': page.toString(),
+        'limit': limit.toString(),
+      },
+    );
+
+    try {
+      final response = await _apiClient.get(
+        uri.toString(),
+        timeout: const Duration(seconds: 20),
+      );
+
+      final data = _processResponse(response);
+      if (kDebugMode) {
+        print('✓ Loaded ${data['data']['reactions'].length} reactions');
+      }
+      return data;
+    } catch (e) {
+      throw _handleNetworkError(e);
+    }
+  }
 }

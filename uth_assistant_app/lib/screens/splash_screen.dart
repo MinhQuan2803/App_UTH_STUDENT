@@ -35,12 +35,25 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _checkAuthAndNavigate() async {
     try {
-      final token = await _authService.getValidToken();
+      // BƯỚC 1: Kiểm tra token offline trước (không gọi API)
+      final storedToken = await _authService.getToken();
+
+      if (storedToken == null || storedToken.isEmpty) {
+        // Không có token -> Chuyển về login
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+        return;
+      }
+
+      // BƯỚC 2: Có token -> Cố gắng lấy valid token (có thể refresh)
+      // Tắt autoRedirect để không bị logout tự động khi lỗi mạng
+      final token = await _authService.getValidToken(autoRedirect: false);
 
       if (!mounted) return;
 
       if (token != null) {
-        // Đã đăng nhập, check xem đã complete profile chưa
+        // Token OK -> Check profile completion
         final isProfileCompleted = await _authService.isProfileCompleted();
 
         if (isProfileCompleted) {
@@ -49,11 +62,43 @@ class _SplashScreenState extends State<SplashScreen>
           Navigator.pushReplacementNamed(context, '/complete_profile');
         }
       } else {
-        Navigator.pushReplacementNamed(context, '/login');
+        // Token không valid và không refresh được
+        // (có thể là hết hạn thật sự hoặc server từ chối)
+        // Kiểm tra lại xem còn token trong storage không
+        final stillHasToken = await _authService.getToken();
+
+        if (stillHasToken != null) {
+          // Vẫn còn token nhưng không validate được -> Vào app thôi
+          // (Có thể là lỗi mạng, để user dùng chức năng offline)
+          final isProfileCompleted = await _authService.isProfileCompleted();
+
+          if (isProfileCompleted) {
+            Navigator.pushReplacementNamed(context, '/home');
+          } else {
+            Navigator.pushReplacementNamed(context, '/complete_profile');
+          }
+        } else {
+          // Token đã bị xóa (signOut) -> Login
+          Navigator.pushReplacementNamed(context, '/login');
+        }
       }
     } catch (e) {
+      // Lỗi bất ngờ -> Kiểm tra xem có token không
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        final hasToken = await _authService.getToken();
+        if (hasToken != null) {
+          // Có token -> Vào app (offline mode)
+          final isProfileCompleted = await _authService.isProfileCompleted();
+
+          if (isProfileCompleted) {
+            Navigator.pushReplacementNamed(context, '/home');
+          } else {
+            Navigator.pushReplacementNamed(context, '/complete_profile');
+          }
+        } else {
+          // Không có token -> Login
+          Navigator.pushReplacementNamed(context, '/login');
+        }
       }
     }
   }

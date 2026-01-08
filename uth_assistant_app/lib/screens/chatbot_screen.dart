@@ -14,14 +14,18 @@ class ChatbotScreen extends StatefulWidget {
   State<ChatbotScreen> createState() => _ChatbotScreenState();
 }
 
-class _ChatbotScreenState extends State<ChatbotScreen> {
+class _ChatbotScreenState extends State<ChatbotScreen>
+    with AutomaticKeepAliveClientMixin {
   final ChatbotService _chatbotService = ChatbotService();
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
+
   // Danh sách tin nhắn
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -38,7 +42,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   void _addWelcomeMessage() {
     _messages.add(ChatMessage(
-      text: 'Chào bạn! Tôi là UTH Assistant. Tôi có thể giúp gì cho bạn hôm nay?',
+      text:
+          'Chào bạn! Tôi là UTH Assistant. Tôi có thể giúp gì cho bạn hôm nay?',
       isFromUser: false,
     ));
   }
@@ -47,7 +52,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     if (text.trim().isEmpty) return;
 
     final userMessage = ChatMessage.fromUser(text);
-    
+
     setState(() {
       _messages.add(userMessage);
       _textController.clear();
@@ -78,9 +83,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         ));
         _isLoading = false;
       });
-      
+
       // Log lỗi chi tiết ra console thay vì hiển thị popup gây phiền
-      debugPrint('Chat Error: $e'); 
+      debugPrint('Chat Error: $e');
     }
   }
 
@@ -107,6 +112,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -132,7 +138,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               width: 26,
               height: 26,
               // Fallback icon nếu không có SVG
-              placeholderBuilder: (context) => const Icon(Icons.smart_toy, color: Colors.white),
+              placeholderBuilder: (context) =>
+                  const Icon(Icons.smart_toy, color: Colors.white),
             ),
           ),
         ),
@@ -153,11 +160,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             icon: const Icon(Icons.help_outline, color: Colors.white, size: 18),
             label: const Text(
               'Thông tin',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
             ),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
           ),
           const SizedBox(width: 4),
@@ -183,7 +192,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       ...message.links!.map((link) => ChatLinkCard(link: link)),
 
                     // Hiển thị Gợi ý (Nếu service đã parse ra List<String>)
-                    if (message.suggestions != null && message.suggestions!.isNotEmpty)
+                    if (message.suggestions != null &&
+                        message.suggestions!.isNotEmpty)
                       ChatSuggestions(
                         suggestions: message.suggestions!,
                         onSuggestionTap: (suggestion) {
@@ -246,9 +256,11 @@ class _ChatInputArea extends StatelessWidget {
                   textInputAction: TextInputAction.send,
                   decoration: InputDecoration(
                     hintText: 'Nhập câu hỏi...',
-                    hintStyle: TextStyle(fontSize: 15, color: AppColors.hintText),
+                    hintStyle:
+                        TextStyle(fontSize: 15, color: AppColors.hintText),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 15, vertical: 10),
                   ),
                   onSubmitted: (text) => onSend(text),
                 ),
@@ -259,14 +271,20 @@ class _ChatInputArea extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: isLoading ? AppColors.primary.withOpacity(0.5) : AppColors.primary,
+                color: isLoading
+                    ? AppColors.primary.withOpacity(0.5)
+                    : AppColors.primary,
                 shape: BoxShape.circle,
               ),
               child: IconButton(
                 icon: isLoading
                     ? SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.white)),
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(AppColors.white)),
                       )
                     : Icon(Icons.send, color: AppColors.white, size: 20),
                 onPressed: isLoading ? null : () => onSend(controller.text),
