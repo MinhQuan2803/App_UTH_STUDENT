@@ -550,7 +550,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           slivers: [
             SliverAppBar(
               expandedHeight: 45,
-              toolbarHeight: 45,
+              toolbarHeight: 40,
               pinned: true,
               elevation: 0,
               backgroundColor: _isScrolled ? Colors.white : Colors.transparent,

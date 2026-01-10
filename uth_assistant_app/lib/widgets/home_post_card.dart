@@ -260,17 +260,7 @@ class _HomePostCardState extends State<HomePostCard> {
     // Nếu đang ở màn hình chi tiết rồi thì không làm gì
     if (widget.isDetailView) return;
 
-    // Nếu là bài post từ tài liệu → Mở Document Detail
-    if (widget.post.isDocumentPost && widget.post.docId != null) {
-      Navigator.pushNamed(
-        context,
-        '/document_detail',
-        arguments: {'documentId': widget.post.docId},
-      );
-      return;
-    }
-
-    // Bài post thông thường → Mở Post Detail
+    // Luôn mở Post Detail (badge riêng xử lý document detail)
     Navigator.pushNamed(
       context,
       '/post_detail',
@@ -320,35 +310,49 @@ class _HomePostCardState extends State<HomePostCard> {
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: AppColors.primary.withOpacity(0.3),
-                      width: 1,
+                child: GestureDetector(
+                  onTap: () {
+                    // Nhấn vào badge → Mở Document Detail
+                    if (widget.post.docId != null) {
+                      Navigator.pushNamed(
+                        context,
+                        '/document_detail',
+                        arguments: {'documentId': widget.post.docId},
+                      );
+                    }
+                  },
+                  behavior:
+                      HitTestBehavior.opaque, // Ngăn event bubble lên parent
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: AppColors.primary.withOpacity(0.3),
+                        width: 1,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.description,
-                        size: 16,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Bài viết về tài liệu - Nhấn để xem chi tiết',
-                        style: TextStyle(
-                          fontSize: 12,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.description,
+                          size: 16,
                           color: AppColors.primary,
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          'Bài viết về tài liệu - Nhấn để xem chi tiết',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -416,7 +420,7 @@ class _HomePostCardState extends State<HomePostCard> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3), width: 1.5),
+                    color: AppColors.primaryDark, width: 1.5),
               ),
               child: CircleAvatar(
                 radius: 18,
@@ -663,7 +667,8 @@ class _HomePostCardState extends State<HomePostCard> {
                       ? Icons.thumb_down
                       : Icons.thumb_down_outlined,
                   count: _dislikesCount,
-                  color: _isDisliked ? AppColors.danger : AppColors.subtitle,
+                  color:
+                      _isDisliked ? AppColors.primaryDark : AppColors.subtitle,
                   onTap: _handleDislikePost,
                 ),
                 Container(
@@ -734,7 +739,7 @@ class _HomePostCardState extends State<HomePostCard> {
                         width: 20,
                         height: 20,
                         decoration: BoxDecoration(
-                          color: AppColors.danger,
+                          color: AppColors.primaryDark,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(

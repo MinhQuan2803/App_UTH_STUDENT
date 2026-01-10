@@ -31,6 +31,9 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
   bool _isLiked = false;
   bool _isLikeLoading = true;
 
+  // Theo dõi xem có thay đổi cần reload không
+  bool _hasChanges = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,7 +71,12 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     setState(() => _isLiked = !_isLiked);
     try {
       final newStatus = await _docService.toggleLike(widget.documentId);
-      if (mounted) setState(() => _isLiked = newStatus);
+      if (mounted) {
+        setState(() {
+          _isLiked = newStatus;
+          _hasChanges = true; // Đánh dấu có thay đổi
+        });
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -124,6 +132,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     try {
       await _transService.buyDocument(doc.id);
       if (mounted) {
+        setState(() => _hasChanges = true); // Đánh dấu có thay đổi
         showAppDialog(context,
             type: DialogType.success,
             title: 'Thành công',
@@ -149,25 +158,32 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: FutureBuilder<DocumentModel>(
-        future: _futureDoc,
-        initialData: widget.initialData,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              snapshot.data == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError)
-            return Center(child: Text('Lỗi: ${snapshot.error}'));
-          if (!snapshot.hasData) return const SizedBox();
-
-          final doc = snapshot.data!;
-          return _buildContent(doc);
+    return PopScope(
+        canPop: false,
+        onPopInvoked: (bool didPop) async {
+          if (didPop) return;
+          // Return giá trị _hasChanges khi pop
+          Navigator.of(context).pop(_hasChanges);
         },
-      ),
-    );
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: FutureBuilder<DocumentModel>(
+            future: _futureDoc,
+            initialData: widget.initialData,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  snapshot.data == null) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError)
+                return Center(child: Text('Lỗi: ${snapshot.error}'));
+              if (!snapshot.hasData) return const SizedBox();
+
+              final doc = snapshot.data!;
+              return _buildContent(doc);
+            },
+          ),
+        ));
   }
 
   Widget _buildContent(DocumentModel doc) {
@@ -341,7 +357,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                           Container(
                               width: 1, height: 30, color: Colors.grey[300]),
                           _buildStatItem(
-                              Icons.visibility_outlined, '1.2k', 'Lượt xem'),
+                              Icons.visibility_outlined, 'Công khai', ''),
                           Container(
                               width: 1, height: 30, color: Colors.grey[300]),
                           _buildStatItem(Icons.picture_as_pdf_outlined, 'PDF',
@@ -356,8 +372,8 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     Text(
                       doc.summary.isNotEmpty
                           ? doc.summary
-                          : (doc.description.isNotEmpty 
-                              ? doc.description 
+                          : (doc.description.isNotEmpty
+                              ? doc.description
                               : 'Chưa có tóm tắt cho tài liệu này.'),
                       style: const TextStyle(
                           height: 1.5, color: Color(0xFF5A6472)),
@@ -577,7 +593,8 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
               SliverToBoxAdapter(
                 child: Container(
                   margin: const EdgeInsets.all(20),
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                   decoration: BoxDecoration(
                     color: Colors.grey[50],
                     borderRadius: BorderRadius.circular(12),
@@ -618,7 +635,6 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
             decoration: BoxDecoration(
               color: Colors.white,
-          
             ),
             child: SafeArea(
               child: doc.isFullAccess

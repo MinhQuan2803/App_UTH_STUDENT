@@ -150,6 +150,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
 
       if (kDebugMode) {
         print('📥 Received response in UI:');
+        print('   Title: ${response['title']}');
         print('   Summary: ${response['summary']}');
         print('   Category: ${response['category']}');
         print(
@@ -160,6 +161,12 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
           response['summary'].toString().isNotEmpty) {
         if (mounted) {
           setState(() {
+            // Cập nhật title nếu có từ response
+            if (response['title'] != null &&
+                response['title'].toString().isNotEmpty) {
+              _titleController.text = response['title'];
+            }
+            // Cập nhật summary
             _descriptionController.text = response['summary'];
           });
 
@@ -248,14 +255,14 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
 
         if (mounted) {
           setState(() => _isUploading = false);
-          
+
           await showAppDialog(
             context,
             type: DialogType.success,
             title: 'Thành công',
             message: 'Tài liệu đã được đăng tải và bài viết đã được tạo!',
           );
-          
+
           if (mounted) {
             Navigator.of(context).pop(true);
           }
@@ -272,14 +279,14 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
 
         if (mounted) {
           setState(() => _isUploading = false);
-          
+
           await showAppDialog(
             context,
             type: DialogType.success,
             title: 'Thành công',
             message: 'Tài liệu đã được đăng tải!',
           );
-          
+
           if (mounted) {
             Navigator.of(context).pop(true);
           }
@@ -390,13 +397,8 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                             ],
                             const Padding(
                                 padding: EdgeInsets.symmetric(vertical: 12),
-                                child:
-                                    Divider(height: 1, color: AppColors.divider)),
-                            _buildPrivacyDropdown(),
-                            const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                child:
-                                    Divider(height: 1, color: AppColors.divider)),
+                                child: Divider(
+                                    height: 1, color: AppColors.divider)),
                             _buildAutoPostCheckbox(),
                           ],
                         ),
@@ -532,7 +534,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _descriptionController,
-          maxLines: 3,
+          maxLines: 6,
           enabled: !_isGeneratingSummary,
           style: AppTextStyles.bodyRegular.copyWith(color: AppColors.text),
           decoration: InputDecoration(
@@ -673,29 +675,6 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
         ),
         const Text('điểm', style: AppTextStyles.bodyRegular),
       ],
-    );
-  }
-
-  Widget _buildPrivacyDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _privacy,
-      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.subtitle),
-      decoration: const InputDecoration(
-        border: InputBorder.none,
-        contentPadding: EdgeInsets.zero,
-        prefixIcon:
-            Icon(Icons.lock_outline, color: AppColors.subtitle, size: 20),
-        prefixIconConstraints: BoxConstraints(minWidth: 32),
-      ),
-      items: const [
-        DropdownMenuItem(
-            value: 'public',
-            child: Text('Công khai', style: AppTextStyles.bodyRegular)),
-        DropdownMenuItem(
-            value: 'private',
-            child: Text('Riêng tư', style: AppTextStyles.bodyRegular)),
-      ],
-      onChanged: (val) => setState(() => _privacy = val!),
     );
   }
 

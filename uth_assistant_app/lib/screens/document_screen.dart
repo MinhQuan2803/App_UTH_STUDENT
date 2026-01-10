@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../config/app_theme.dart';
 import '../widgets/document_card.dart';
 import '../services/document_service.dart';
@@ -340,6 +341,8 @@ class _DocumentScreenState extends State<DocumentScreen>
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        systemOverlayStyle:
+            SystemUiOverlayStyle.dark, // Status bar text màu đen cho nền sáng
         title: Container(
           height: 40,
           decoration: BoxDecoration(
@@ -441,8 +444,8 @@ class _DocumentScreenState extends State<DocumentScreen>
           final doc = filteredDocs[index];
           return DocumentCard(
             document: doc,
-            onTap: () {
-              Navigator.push(
+            onTap: () async {
+              final shouldRefresh = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => DocumentDetailScreen(
@@ -450,7 +453,11 @@ class _DocumentScreenState extends State<DocumentScreen>
                     initialData: doc,
                   ),
                 ),
-              ).then((_) => onRefresh());
+              );
+              // Chỉ reload khi có thay đổi (ví dụ: đã mua, đã xóa, đã like)
+              if (shouldRefresh == true) {
+                onRefresh();
+              }
             },
             onOptionTap: isEditable ? () => _showDocumentOptions(doc) : null,
           );

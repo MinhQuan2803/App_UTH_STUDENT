@@ -67,7 +67,7 @@ class PaymentService {
     try {
       final response = await http
           .post(
-            Uri.parse('$_baseUrl/create-payment'),
+            Uri.parse('https://uthstudent.onrender.com/api/payment/create-payment'),
             headers: headers,
             body: body,
           )

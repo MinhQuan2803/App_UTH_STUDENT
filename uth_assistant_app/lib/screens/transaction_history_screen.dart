@@ -486,9 +486,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
   String _translatePaymentMethod(String method) {
     switch (method) {
       case 'VNPAY':
-        return '💳 VNPay';
+        return ' VNPay';
       case 'MOMO':
-        return '📱 MoMo';
+        return ' MoMo';
       case 'BANK_TRANSFER':
         return '🏦 Chuyển khoản';
       case 'ZALOPAY':

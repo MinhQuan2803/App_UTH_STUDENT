@@ -22,8 +22,6 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen>
     with SingleTickerProviderStateMixin {
-  final FocusNode _usernameFocus = FocusNode();
-  final TextEditingController _usernameController = TextEditingController();
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmPasswordFocus = FocusNode();
@@ -38,7 +36,6 @@ class _SignupScreenState extends State<SignupScreen>
   @override
   void initState() {
     super.initState();
-    _usernameFocus.addListener(_onFocusChange);
     _emailFocus.addListener(_onFocusChange);
     _passwordFocus.addListener(_onFocusChange);
     _confirmPasswordFocus.addListener(_onFocusChange);
@@ -46,8 +43,7 @@ class _SignupScreenState extends State<SignupScreen>
 
   void _onFocusChange() {
     setState(() {
-      _hideIllustration = _usernameFocus.hasFocus ||
-          _emailFocus.hasFocus ||
+      _hideIllustration = _emailFocus.hasFocus ||
           _passwordFocus.hasFocus ||
           _confirmPasswordFocus.hasFocus;
     });
@@ -56,15 +52,12 @@ class _SignupScreenState extends State<SignupScreen>
   @override
   void dispose() {
     // Luôn luôn dispose và remove listener!
-    _usernameFocus.removeListener(_onFocusChange);
     _emailFocus.removeListener(_onFocusChange);
     _passwordFocus.removeListener(_onFocusChange);
     _confirmPasswordFocus.removeListener(_onFocusChange);
-    _usernameFocus.dispose();
     _emailFocus.dispose();
     _passwordFocus.dispose();
     _confirmPasswordFocus.dispose();
-    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -77,10 +70,6 @@ class _SignupScreenState extends State<SignupScreen>
     FocusScope.of(context).unfocus();
 
     // 2. Validation phía client (trước khi gọi API)
-    if (_usernameController.text.trim().isEmpty) {
-      _showErrorSnackBar('Vui lòng nhập tên hiển thị!');
-      return;
-    }
     // Kiểm tra email (định dạng cơ bản)
     final email = _emailController.text.trim();
     bool emailValid =
@@ -108,7 +97,7 @@ class _SignupScreenState extends State<SignupScreen>
 
     try {
       responseData = await _authService.signUp(
-        username: _usernameController.text.trim(),
+        username: email.split('@')[0], // Sử dụng phần trước @ của email làm username
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
@@ -216,13 +205,6 @@ class _SignupScreenState extends State<SignupScreen>
                   style: AppTextStyles.bodyRegular,
                 ),
                 const SizedBox(height: 24.0),
-                CustomTextField(
-                  hintText: 'Tên người dùng',
-                  controller: _usernameController,
-                  focusNode: _usernameFocus,
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 16.0),
                 CustomTextField(
                   hintText: 'Email sinh viên',
                   controller: _emailController,

@@ -429,7 +429,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           // Username field
           _buildModernTextField(
             controller: _usernameController,
-            label: 'Tên đăng nhập',
+            label: 'Biệt danh (username)',
             hint: 'Nhập username của bạn',
             icon: Icons.alternate_email_rounded,
             validator: (value) {

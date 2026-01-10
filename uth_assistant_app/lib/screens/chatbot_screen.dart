@@ -43,7 +43,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   void _addWelcomeMessage() {
     _messages.add(ChatMessage(
       text:
-          'Chào bạn! Tôi là UTH Assistant. Tôi có thể giúp gì cho bạn hôm nay?',
+          'Chào bạn! Tôi là Chatbot AI do sinh viên UTH tạo ra. Tôi có thể giúp gì cho bạn hôm nay?',
       isFromUser: false,
     ));
   }
@@ -244,7 +244,10 @@ class _ChatInputArea extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Container(
-                height: 60,
+                constraints: const BoxConstraints(
+                  minHeight: 60,
+                  maxHeight: 140,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.inputBackground,
                   borderRadius: BorderRadius.circular(24),
@@ -253,6 +256,8 @@ class _ChatInputArea extends StatelessWidget {
                 child: TextField(
                   controller: controller,
                   enabled: !isLoading,
+                  maxLines: 5,
+                  minLines: 1,
                   textInputAction: TextInputAction.send,
                   decoration: InputDecoration(
                     hintText: 'Nhập câu hỏi...',

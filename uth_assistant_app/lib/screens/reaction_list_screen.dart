@@ -326,8 +326,26 @@ class _ReactionListScreenState extends State<ReactionListScreen>
           ),
           tabs: [
             Tab(text: 'Tất cả $_totalAll'),
-            Tab(text: '❤️ $_totalLikes'),
-            Tab(text: '👎 $_totalDislikes'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.favorite, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text('$_totalLikes'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.thumb_down, size: 16, color: AppColors.primaryDark),
+                  const SizedBox(width: 4),
+                  Text('$_totalDislikes'),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -464,7 +482,7 @@ class _ReactionListScreenState extends State<ReactionListScreen>
               decoration: BoxDecoration(
                 color: reaction.reactionType == 'like'
                     ? AppColors.primary.withOpacity(0.1)
-                    : AppColors.danger.withOpacity(0.1),
+                    : AppColors.primaryDark.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -474,7 +492,7 @@ class _ReactionListScreenState extends State<ReactionListScreen>
                 size: 18,
                 color: reaction.reactionType == 'like'
                     ? AppColors.primary
-                    : AppColors.danger,
+                    : AppColors.primaryDark,
               ),
             ),
           ],

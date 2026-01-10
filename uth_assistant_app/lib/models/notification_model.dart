@@ -47,7 +47,8 @@ class NotificationModel {
 class RelatedUser {
   final String userId;
   final String username;
-  final String? avatarURL; // Lưu ý: Bạn đang đặt tên biến là avatarURL (có URL viết hoa)
+  final String?
+      avatarURL; // Lưu ý: Bạn đang đặt tên biến là avatarURL (có URL viết hoa)
 
   RelatedUser({required this.userId, required this.username, this.avatarURL});
 
@@ -56,16 +57,16 @@ class RelatedUser {
     String id = '';
     String? avt;
     // Mặc định lấy tên snapshot (tên cũ lưu trong thông báo)
-    String name = json['username'] ?? ''; 
+    String name = json['username'] ?? '';
 
     // Kiểm tra xem userId có được populate (là Map) hay không
     if (json['userId'] is Map) {
       final userMap = json['userId'];
       id = userMap['_id'] ?? '';
-      
+
       // Lấy avatarUrl từ database (khớp với model User.js của bạn)
-      avt = userMap['avatarUrl']; 
-      
+      avt = userMap['avatarUrl'];
+
       // Lấy tên mới nhất từ bảng User (nếu có)
       if (userMap['username'] != null) {
         name = userMap['username'];

@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../config/app_theme.dart';
 
 class DocumentSearchItem extends StatelessWidget {
   final String title;
   final String description;
-  final String uploaderUsername;
-  final String? uploaderAvatar;
   final String fileType;
   final int price;
-  final int downloads;
   final VoidCallback onTap;
 
   const DocumentSearchItem({
     super.key,
     required this.title,
     required this.description,
-    required this.uploaderUsername,
-    this.uploaderAvatar,
     required this.fileType,
     required this.price,
-    required this.downloads,
     required this.onTap,
   });
 
@@ -76,63 +71,9 @@ class DocumentSearchItem extends StatelessWidget {
                         color: AppColors.textSecondary,
                         fontSize: 13,
                       ),
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 6),
-                  // Uploader and stats
-                  Row(
-                    children: [
-                      // Uploader avatar
-                      CircleAvatar(
-                        radius: 10,
-                        backgroundColor: AppColors.secondary,
-                        backgroundImage:
-                            uploaderAvatar != null && uploaderAvatar!.isNotEmpty
-                                ? NetworkImage(uploaderAvatar!)
-                                : null,
-                        child: uploaderAvatar == null || uploaderAvatar!.isEmpty
-                            ? Text(
-                                uploaderUsername.isNotEmpty
-                                    ? uploaderUsername[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: AppColors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 6),
-                      // Uploader name
-                      Flexible(
-                        child: Text(
-                          uploaderUsername,
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Downloads
-                      Icon(
-                        Icons.download_rounded,
-                        size: 14,
-                        color: AppColors.textSecondary.withOpacity(0.7),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$downloads',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -144,14 +85,38 @@ class DocumentSearchItem extends StatelessWidget {
                 color: price > 0 ? AppColors.primary : AppColors.success,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                price > 0 ? '$price xu' : 'Miễn phí',
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: price > 0
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$price',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        SvgPicture.asset(
+                          AppAssets.iconCoin,
+                          width: 14,
+                          height: 14,
+                          colorFilter: const ColorFilter.mode(
+                            AppColors.white,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      'Miễn phí',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
           ],
         ),

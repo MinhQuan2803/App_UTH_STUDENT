@@ -227,7 +227,7 @@ class PostService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 90));
 
       final data = _processResponse(response); // API trả về 201 Created
       final post = Post.fromJson(data);
@@ -276,7 +276,7 @@ class PostService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 90));
 
       final data = _processResponse(response);
       // API của bạn trả về { status, message, data: { post } }
@@ -298,7 +298,7 @@ class PostService {
     try {
       final response = await _apiClient.delete(
         '$_baseUrl/deletepost/$postId',
-        timeout: const Duration(seconds: 30),
+        timeout: const Duration(seconds: 90),
       );
 
       // Debug: Xem response từ server

@@ -36,7 +36,7 @@ class AuthService {
     try {
       final response = await http
           .post(
-            Uri.parse('$_baseUrl/signup'),
+            Uri.parse('https://uthstudent.onrender.com/api/auth/signup'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'username': username,
@@ -214,7 +214,7 @@ class AuthService {
     try {
       final response = await http
           .post(
-            Uri.parse('$_baseUrl/verify-code'),
+            Uri.parse('https://uthstudent.onrender.com/api/auth/verify-code'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'email': email,
@@ -256,7 +256,7 @@ class AuthService {
     try {
       final response = await http
           .post(
-            Uri.parse('$_baseUrl/resend-verification'),
+            Uri.parse('https://uthstudent.onrender.com/api/auth/resend-verification'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'email': email,

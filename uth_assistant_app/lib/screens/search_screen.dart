@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
@@ -180,87 +181,90 @@ class _SearchScreenState extends State<SearchScreen>
     // Lấy chiều cao status bar
     final statusBarHeight = MediaQuery.of(context).padding.top;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      // Padding compact như Facebook
-      padding: EdgeInsets.fromLTRB(8, statusBarHeight + 8, 8, 8),
-      child: Row(
-        children: [
-          // Back Button - compact
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              shape: BoxShape.circle,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 2,
+              offset: const Offset(0, 1),
             ),
-            child: IconButton(
-              icon:
-                  const Icon(Icons.arrow_back, color: AppColors.text, size: 20),
-              onPressed: () => Navigator.pop(context),
-              padding: EdgeInsets.zero,
-              iconSize: 20,
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Search TextField - chiếm nhiều space
-          Expanded(
-            child: Container(
-              height: 40,
+          ],
+        ),
+        // Padding compact như Facebook
+        padding: EdgeInsets.fromLTRB(8, statusBarHeight + 8, 8, 8),
+        child: Row(
+          children: [
+            // Back Button - compact
+            Container(
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(18),
+                shape: BoxShape.circle,
               ),
-              child: TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: AppTextStyles.bodyRegular.copyWith(
-                  fontSize: 15,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back,
+                    color: AppColors.text, size: 20),
+                onPressed: () => Navigator.pop(context),
+                padding: EdgeInsets.zero,
+                iconSize: 20,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Search TextField - chiếm nhiều space
+            Expanded(
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Tìm kiếm...',
-                  hintStyle: AppTextStyles.searchHint.copyWith(
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  style: AppTextStyles.bodyRegular.copyWith(
                     fontSize: 15,
                   ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: AppColors.subtitle,
-                    size: 20,
+                  decoration: InputDecoration(
+                    hintText: 'Tìm kiếm...',
+                    hintStyle: AppTextStyles.searchHint.copyWith(
+                      fontSize: 15,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: AppColors.subtitle,
+                      size: 20,
+                    ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(
+                              Icons.cancel,
+                              color: AppColors.subtitle,
+                              size: 18,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                            padding: EdgeInsets.zero,
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 12,
+                    ),
+                    isDense: true,
                   ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(
-                            Icons.cancel,
-                            color: AppColors.subtitle,
-                            size: 18,
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {});
-                          },
-                          padding: EdgeInsets.zero,
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 12,
-                  ),
-                  isDense: true,
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -359,8 +363,6 @@ class _SearchScreenState extends State<SearchScreen>
     // Empty state với suggestions
     if (_searchController.text.isEmpty) {
       return _buildEmptySearchState(
-        icon: Icons.people_rounded,
-        title: 'Tìm kiếm người dùng',
         subtitle: 'Nhập tên hoặc username để tìm kiếm',
       );
     }
@@ -406,8 +408,6 @@ class _SearchScreenState extends State<SearchScreen>
     // Empty state
     if (_searchController.text.isEmpty) {
       return _buildEmptySearchState(
-        icon: Icons.article_rounded,
-        title: 'Tìm kiếm bài viết',
         subtitle: 'Tìm bài viết theo nội dung hoặc hashtag',
       );
     }
@@ -444,8 +444,6 @@ class _SearchScreenState extends State<SearchScreen>
     // Empty state
     if (_searchController.text.isEmpty) {
       return _buildEmptySearchState(
-        icon: Icons.description_rounded,
-        title: 'Tìm kiếm tài liệu',
         subtitle: 'Tìm tài liệu học tập, đề thi, bài giảng',
       );
     }
@@ -467,11 +465,8 @@ class _SearchScreenState extends State<SearchScreen>
         return DocumentSearchItem(
           title: doc.title,
           description: doc.summary ?? '', // Sử dụng summary từ backend
-          uploaderUsername: 'N/A', // Backend không trả về uploader info
-          uploaderAvatar: null,
           fileType: doc.type ?? 'FILE', // Sử dụng type từ backend
           price: doc.price,
-          downloads: 0, // Backend không trả về downloads
           onTap: () {
             // Navigate tới document detail screen
             Navigator.pushNamed(
@@ -509,38 +504,12 @@ class _SearchScreenState extends State<SearchScreen>
 
   // Empty Search State với suggestions
   Widget _buildEmptySearchState({
-    required IconData icon,
-    required String title,
     required String subtitle,
   }) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          const SizedBox(height: 40),
-          // Icon
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              size: 50,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Title
-          Text(
-            title,
-            style: AppTextStyles.heading1.copyWith(fontSize: 20),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          // Subtitle
           Text(
             subtitle,
             style: AppTextStyles.bodyRegular,
